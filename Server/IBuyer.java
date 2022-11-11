@@ -1,0 +1,9 @@
+import javax.crypto.SealedObject;
+import java.rmi.Remote;
+import java.rmi.RemoteException;
+
+public interface IBuyer extends Remote {
+    SealedObject getSpec(int auctionId, SealedObject clientRequest) throws RemoteException;
+    boolean bidItem(BidRequest request, SealedObject clientRequest) throws RemoteException;
+    SealedObject getList(SealedObject clientRequest) throws RemoteException;
+}
