@@ -9,7 +9,9 @@ public class Buyer extends Client {
         super();
     }
     public static void main(String[] args) {
-        IBuyer server = connectToServer();
+        IBuyer server = connectToServer(Constants.ClientType.Buyer);
+        if(server == null)
+            return;
         int answer;
         Scanner scanner = new Scanner(System.in);
         do {

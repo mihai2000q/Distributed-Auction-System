@@ -43,7 +43,7 @@ public class Client {
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH);
     }
-    protected static<T extends IAuthentification> T connectToServer() {
+    protected static<T extends IAuthentification> T connectToServer(Constants.ClientType clientType) {
         final User user;
         final T server;
         try {
@@ -55,9 +55,9 @@ public class Client {
             exception.printStackTrace();
             throw new RuntimeException(exception);
         }
-        var response = login(server, Constants.ClientType.Seller);
+        var response = login(server, clientType);
         if(!response.x())
-            return null; //FIX WHEN THE PASSWORD IS WRONG --- ALSO MAKE PASSWORD NOT VISIBLE
+            return null;
         user = response.y();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
         return server;

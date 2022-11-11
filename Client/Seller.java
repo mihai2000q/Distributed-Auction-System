@@ -6,7 +6,9 @@ public class Seller extends Client {
         super();
     }
     public static void main(String[] args) {
-        ISeller server = connectToServer();
+        ISeller server = connectToServer(Constants.ClientType.Seller);
+        if(server == null)
+            return;
         int answer;
         Scanner scanner = new Scanner(System.in);
         do {
