@@ -15,6 +15,7 @@ public class Constants {
     public static final String REQUEST_SECRET_KEY_ALIAS = "RequestSecretKey";
     public static final String LIST_PATH = "Data/list.tmp";
     public static final int LIST_CAPACITY = 1000;
+    public static final int USERS_CAPACITY = 10;
     public static int generateRandomInt(){
         return new Random().nextInt((int) Math.pow(2, 10));
     }

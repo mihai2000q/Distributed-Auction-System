@@ -8,17 +8,24 @@ import java.rmi.registry.Registry;
 import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 public class Server implements IBuyer, ISeller, IServer {
     private final Map<Integer, AuctionItem> auctionItems;
+    private final List<User> users;
+    private final List<User> activeUsers;
     private final IEncryptionService encryptionService;
     public Server() {
         super();
         encryptionService = new EncryptionService();
         auctionItems = new HashMap<>(Constants.LIST_CAPACITY);
+        users = new ArrayList<>(Constants.USERS_CAPACITY);
+        activeUsers = new ArrayList<>();
         loadList();
+        initUsers();
     }
     public static void main(String[] args) {
         //launching the server
@@ -33,7 +40,24 @@ public class Server implements IBuyer, ISeller, IServer {
             e.printStackTrace();
         }
     }
-    public AuctionItem getSpec(int auctionId) {
+    @Override
+    public boolean login(User user, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        if(!users.contains(user)) {
+            System.out.println("Failed login attempt");
+            return false;
+        }
+        activeUsers.add(user);
+        System.out.println("Number of active users is " + activeUsers.size());
+        return true;
+    }
+    @Override
+    public void logout(User user, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        activeUsers.remove(user);
+        System.out.println("Number of active users is " + activeUsers.size());
+    }
+    public AuctionItem getSpec(int auctionId){
         return auctionItems.getOrDefault(auctionId, AuctionItem.Empty);
     }
     @Override
@@ -160,5 +184,9 @@ public class Server implements IBuyer, ISeller, IServer {
             System.out.println("ERROR:\t problem while creating the list file");
             throw new RuntimeException(exception);
         }
+    }
+    private void initUsers() {
+        users.add(new User("admin", "admin", Constants.ClientType.Seller));
+        users.add(new User("admin", "admin", Constants.ClientType.Buyer));
     }
 }
