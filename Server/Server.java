@@ -11,7 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HashMap;
 import java.util.Map;
 
-public class Server implements IServer {
+public class Server implements IBuyer, ISeller, IServer {
     private final Map<Integer, AuctionItem> auctionItems;
     private final IEncryptionService encryptionService;
     public Server() {
@@ -28,7 +28,7 @@ public class Server implements IServer {
             Registry registry = LocateRegistry.getRegistry();
             registry.rebind(Constants.SERVER_NAME, stub);
             System.out.println("Server ready\n");
-        } catch (RemoteException e) {
+        } catch (Exception e) {
             System.err.println("Error\t: problem while trying to launch the server");
             e.printStackTrace();
         }
