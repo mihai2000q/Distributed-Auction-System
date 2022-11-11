@@ -1,8 +1,9 @@
 import java.util.Random;
 
-public class Constants {
+public final class Constants {
+    private Constants() {}
     public enum ClientType {Seller, Buyer}
-    public static final String SERVER_NAME = "The Server";
+    public static final String SERVER_NAME = "Auction Server";
     public static final String SERVER_HOST = "localhost";
     public static final short SERVER_PORT = 0;
     public static final String PASSWORD = "admin";

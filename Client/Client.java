@@ -5,7 +5,7 @@ import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
 import java.util.*;
 
-public class Client {
+public abstract class Client {
     protected static final IEncryptionService encryptionService = new EncryptionService();
     public Client() {
         super();

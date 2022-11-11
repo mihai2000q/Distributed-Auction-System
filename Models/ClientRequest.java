@@ -1,6 +1,6 @@
 import java.io.Serializable;
 
-public class ClientRequest implements Serializable {
+public final class ClientRequest implements Serializable {
     private final int id;
 
     public ClientRequest(int clientId) {

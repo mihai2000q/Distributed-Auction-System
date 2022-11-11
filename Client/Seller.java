@@ -1,7 +1,7 @@
 import java.rmi.RemoteException;
 import java.util.Scanner;
 
-public class Seller extends Client {
+public final class Seller extends Client {
     public Seller() {
         super();
     }

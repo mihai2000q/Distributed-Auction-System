@@ -13,7 +13,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Server implements IBuyer, ISeller, IServer {
+public final class Server implements IBuyer, ISeller, IServer {
     private final Map<Integer, AuctionItem> auctionItems;
     private final List<User> users;
     private final List<User> activeUsers;

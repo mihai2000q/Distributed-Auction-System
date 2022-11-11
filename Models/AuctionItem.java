@@ -1,7 +1,7 @@
 import java.io.Serializable;
 import java.util.Objects;
 
-public class AuctionItem implements Serializable, Comparable<AuctionItem> {
+public final class AuctionItem implements Serializable, Comparable<AuctionItem> {
     private final int id;
     private final String itemName;
     private final String sellerName;

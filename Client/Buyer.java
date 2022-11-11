@@ -4,7 +4,7 @@ import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
-public class Buyer extends Client {
+public final class Buyer extends Client {
     public Buyer() {
         super();
     }

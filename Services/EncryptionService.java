@@ -5,7 +5,7 @@ import java.nio.file.Files;
 import java.security.*;
 import java.security.cert.CertificateException;
 
-public class EncryptionService implements IEncryptionService{
+public final class EncryptionService implements IEncryptionService{
     public EncryptionService() {
         super();
     }
