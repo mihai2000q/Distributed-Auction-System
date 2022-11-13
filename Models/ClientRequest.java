@@ -2,18 +2,24 @@ import java.io.Serializable;
 
 public final class ClientRequest implements Serializable {
     private final int id;
+    private final User user;
 
-    public ClientRequest(int clientId) {
+    public ClientRequest(int clientId, User user) {
         super();
         this.id = clientId;
+        this.user = user;
     }
 
     public int getId() {
         return id;
     }
 
+    public User getUser(){
+        return user;
+    }
+
     @Override
     public String toString() {
-        return "This request got the id: " + id;
+        return "This request was made by " + user.getUsername() + " and it got the id: " + id;
     }
 }

@@ -10,7 +10,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     private final String description;
     private String highestBidName = "None";
     private int currentBid = 0;
-    public static final AuctionItem Empty = new AuctionItem(-1, "N/A", "N/A",
+    public static final AuctionItem EMPTY = new AuctionItem(-1, "N/A", "N/A",
                                                         0, 0, "N/A");
 
     public AuctionItem(int id, String itemName, String sellerName,
@@ -41,6 +41,14 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         highestBidName = bidderName;
     }
 
+    public int getStartingPrice() {
+        return startingPrice;
+    }
+
+    public String getSellerName() {
+        return sellerName;
+    }
+
     public String getHighestBidName() {
         return highestBidName;
     }
@@ -58,7 +66,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     }
 
     public boolean isEmpty() {
-        return id == -1;
+        return this == EMPTY;
     }
 
     @Override

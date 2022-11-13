@@ -16,13 +16,13 @@ public abstract class Client {
         String username = scanner.nextLine();
         System.out.print("password: ");
         String password = scanner.nextLine();
-        var user = new User(username, password, clientType);
+        var user = new User(Constants.generateRandomInt(),username, password, clientType);
         try {
-            if(server.login(user, createSealedRequest()))
+            if(server.login(createSealedRequest(user)))
                 System.out.println("\nLogged in successfully\n");
             else {
                 System.out.println("\nUsername or Password incorrect");
-                return new Pair<>(false, User.Empty);
+                return new Pair<>(false, User.EMPTY);
             }
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't log in");
@@ -32,18 +32,19 @@ public abstract class Client {
     }
     protected static<T extends IAuthentification> void logout(T server, User user) {
         try {
-            server.logout(user, createSealedRequest());
+            server.logout(createSealedRequest(user));
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't logout");
             throw new RuntimeException(exception);
         }
     }
-    protected static SealedObject createSealedRequest() {
-        return encryptionService.encryptObject(new ClientRequest(Constants.generateRandomInt()),
+    protected static SealedObject createSealedRequest(User user) {
+        return encryptionService.encryptObject(new ClientRequest(Constants.generateRandomInt(), user),
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH);
     }
-    protected static<T extends IAuthentification> T connectToServer(Constants.ClientType clientType) {
+    @SuppressWarnings("unchecked")
+    protected static<T extends IAuthentification> Pair<T, User> connectToServer(Constants.ClientType clientType) {
         final User user;
         final T server;
         try {
@@ -60,7 +61,7 @@ public abstract class Client {
             return null;
         user = response.y();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
-        return server;
+        return new Pair<>(server,user);
     }
 
 }

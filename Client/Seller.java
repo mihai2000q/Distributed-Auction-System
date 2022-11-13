@@ -6,9 +6,11 @@ public final class Seller extends Client {
         super();
     }
     public static void main(String[] args) {
-        ISeller server = connectToServer(Constants.ClientType.Seller);
-        if(server == null)
+        var response = connectToServer(Constants.ClientType.Seller);
+        if(response == null)
             return;
+        final ISeller server = (ISeller) response.x();
+        final User user = response.y();
         int answer;
         Scanner scanner = new Scanner(System.in);
         do {
@@ -22,13 +24,13 @@ public final class Seller extends Client {
                             """);
             answer = scanner.nextInt();
             if(answer == 1)
-                createAuction(server);
+                createAuction(server, user);
             else if(answer == 2)
-                closeAuction(server);
+                closeAuction(server, user);
         } while(answer != 3);
         System.exit(0);
     }
-    private static void createAuction(ISeller server) {
+    private static void createAuction(ISeller server, User user) {
         String itemName;
         int startingPrice;
         int reservePrice;
@@ -50,7 +52,7 @@ public final class Seller extends Client {
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
 
         try {
-            var response = server.createAuction(sealedItem, createSealedRequest());
+            var response = server.createAuction(sealedItem, createSealedRequest(user));
             if (response.x())
                 System.out.println("\nItem added successfully with the auction ID " + response.y());
             else
@@ -60,17 +62,22 @@ public final class Seller extends Client {
             throw new RuntimeException(exception);
         }
     }
-    private static void closeAuction(ISeller server) {
+    private static void closeAuction(ISeller server, User user) {
         Scanner scanner = new Scanner(System.in);
         System.out.println("Please enter the auction id:\t");
         int auctionId = scanner.nextInt();
         try {
-            var response = server.closeAuction(auctionId, createSealedRequest());
-            if(response.x())
+            var response = server.closeAuction(auctionId, createSealedRequest(user));
+            if(response.hasItem() && response.isAuthorized())
                 System.out.println("Auction " + auctionId + " closed with success " +
-                        (response.y().equals("None") ? "but nobody bid" : "and " + response.y() + " won"));
+                        (response.winner().equals("None") ?
+                                "but nobody bid" :
+                                "and " + response.winner() + " won"));
+            else if(!response.isAuthorized())
+                System.out.println("You are not authorized to close this auction!");
             else
                 System.out.println("There is no auction with that id");
+
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't close auction");
             throw new RuntimeException(exception);

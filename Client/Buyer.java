@@ -9,9 +9,11 @@ public final class Buyer extends Client {
         super();
     }
     public static void main(String[] args) {
-        IBuyer server = connectToServer(Constants.ClientType.Buyer);
-        if(server == null)
+        var response = connectToServer(Constants.ClientType.Buyer);
+        if(response == null)
             return;
+        final IBuyer server = (IBuyer) response.x();
+        final User user = response.y();
         int answer;
         Scanner scanner = new Scanner(System.in);
         do {
@@ -26,18 +28,18 @@ public final class Buyer extends Client {
                             """);
             answer = scanner.nextInt();
             if(answer == 1)
-                getAuctionItem(server);
+                getAuctionItem(server, user);
             else if(answer == 2)
-                bidItem(server);
+                bidItem(server, user);
             else if(answer == 3)
-                printList(server);
+                printList(server, user);
         } while(answer != 4);
     }
-    private static void getAuctionItem(IBuyer server) {
+    private static void getAuctionItem(IBuyer server, User user) {
         try {
-            System.out.print("Please enter an id:\t");
+            System.out.print("Please enter an id: ");
             var sealedObject = server.getSpec(new Scanner(System.in).nextInt(),
-                    createSealedRequest());
+                    createSealedRequest(user));
 
             var itemKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
@@ -53,16 +55,26 @@ public final class Buyer extends Client {
             exception.printStackTrace();
         }
     }
-    private static void bidItem(IBuyer server) {
+    private static void bidItem(IBuyer server, User user) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter the auction id:\t");
+        System.out.println("Please enter the auction id: ");
         int auctionId = scanner.nextInt();
-        System.out.println("Please enter the bidding amount:\t");
+        System.out.println("Please enter the bidding amount: ");
         int bid = scanner.nextInt();
         System.out.println();
         try {
-            if(server.bidItem(new BidRequest(auctionId, bid, "Buyer"), createSealedRequest()))
+            var response = server.bidItem(new BidRequest(auctionId, bid, user.getUsername()),
+                    createSealedRequest(user));
+            if(response.hasItem() && response.bidComparison() > 0)
                 System.out.println("Bid successfully");
+            else if(response.startingPriceComparison() == 0)
+                System.out.println("The bid is equal to the starting price");
+            else if(response.startingPriceComparison() == -1)
+                System.out.println("The bid is lower than the starting price");
+            else if(response.bidComparison() == 0)
+                System.out.println("The bid is equal to the current bid");
+            else if(response.bidComparison() == -1)
+                System.out.println("The bid is lower than the current bid");
             else
                 System.out.println("There is no auction with that id");
         } catch (RemoteException exception) {
@@ -70,12 +82,14 @@ public final class Buyer extends Client {
             throw new RuntimeException(exception);
         }
     }
-    private static void printList(IBuyer server) {
+    private static void printList(IBuyer server, User user) {
         try {
-            var sealedObject = server.getList(createSealedRequest());
+            var sealedObject = server.getList(createSealedRequest(user));
             var listKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
+            @SuppressWarnings("unchecked")
             var hashMap = (HashMap<Integer, AuctionItem>) sealedObject.getObject(listKey);
+
 //            List<AuctionItem> items = new ArrayList<>(hashMap.size());
 //
 //            hashMap.forEach((key, value) -> items.add(value));
@@ -86,11 +100,12 @@ public final class Buyer extends Client {
 //            else
 //                items.forEach(System.out::println);
 //
-//            System.out.println();
+            System.out.println();
 
             hashMap.forEach((key, value) -> System.out.println("The auction id is: " + key + " " + value));
         }
         catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.out.println("ERROR:\t couldn't print the list");
             throw new RuntimeException(exception);
         }
     }
