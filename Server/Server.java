@@ -181,7 +181,7 @@ public final class Server implements IBuyer, ISeller, IServer {
         try {
             ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(Constants.LIST_PATH));
             @SuppressWarnings("unchecked")
-            var outputList = (HashMap<Integer, AuctionItem>) objectInputStream.readObject();
+            var outputList = (Map<Integer, AuctionItem>) objectInputStream.readObject();
             if(outputList != null)
                 auctionItems.putAll(outputList);
             objectInputStream.close();

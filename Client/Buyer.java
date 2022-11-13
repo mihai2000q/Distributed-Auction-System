@@ -89,7 +89,7 @@ public final class Buyer extends Client {
             var listKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
             @SuppressWarnings("unchecked")
-            var hashMap = (HashMap<Integer, AuctionItem>) sealedObject.getObject(listKey);
+            var hashMap = (Map<Integer, AuctionItem>) sealedObject.getObject(listKey);
             if(hashMap == null) return;
 
             List<AuctionItem> items = new ArrayList<>(hashMap.size());
