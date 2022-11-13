@@ -1,4 +1,5 @@
 import java.rmi.RemoteException;
+import java.text.ParseException;
 import java.util.Scanner;
 
 public final class Seller extends Client {
@@ -23,6 +24,7 @@ public final class Seller extends Client {
                             3 To logout
                             """);
             answer = scanner.nextInt();
+            System.out.println();
             if(answer == 1)
                 createAuction(server, user);
             else if(answer == 2)
@@ -38,14 +40,17 @@ public final class Seller extends Client {
         System.out.print("Please enter the item name: ");
         itemName = scanner.nextLine();
         System.out.print("What is the starting price: ");
-        startingPrice = scanner.nextInt();
+        startingPrice = validateInteger(scanner.nextLine());
         System.out.print("What is the reserve price: ");
-        reservePrice = scanner.nextInt();
+        reservePrice = validateInteger(scanner.nextLine());
+        if(reservePrice < startingPrice) {
+            System.out.println("The reserved price cannot be lower than the starting price");
+            return;
+        }
         System.out.print("What is the description of the item: ");
-        scanner.nextLine();
         String description = scanner.nextLine();
         //the id will be computed later in the server
-        final AuctionItem item = new AuctionItem(-1, itemName, "Seller",
+        final AuctionItem item = new AuctionItem(-1, -1, itemName, user.getUsername(),
                                                 startingPrice, reservePrice, description);
 
         var sealedItem = encryptionService.encryptObject(item, Constants.ENCRYPTION_ALGORITHM,
@@ -64,23 +69,32 @@ public final class Seller extends Client {
     }
     private static void closeAuction(ISeller server, User user) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter the auction id:\t");
+        System.out.print("Please enter the auction id: ");
         int auctionId = scanner.nextInt();
         try {
             var response = server.closeAuction(auctionId, createSealedRequest(user));
             if(response.hasItem() && response.isAuthorized())
-                System.out.println("Auction " + auctionId + " closed with success " +
+                System.out.println("\nAuction " + auctionId + " closed with success " +
                         (response.winner().equals("None") ?
                                 "but nobody bid" :
                                 "and " + response.winner() + " won"));
             else if(!response.isAuthorized())
-                System.out.println("You are not authorized to close this auction!");
+                System.out.println("\nYou are not authorized to close this auction!");
             else
-                System.out.println("There is no auction with that id");
+                System.out.println("\nThere is no auction with that id");
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't close auction");
             throw new RuntimeException(exception);
+        }
+    }
+    private static int validateInteger(String number) {
+        try {
+            return Integer.parseInt(number);
+        }
+        catch (Exception exception) {
+            System.out.println("Please insert a number instead!!!");
+            return 0;
         }
     }
 }

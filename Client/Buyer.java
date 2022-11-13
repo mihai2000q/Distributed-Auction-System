@@ -27,6 +27,7 @@ public final class Buyer extends Client {
                             4 to logout
                             """);
             answer = scanner.nextInt();
+            System.out.println();
             if(answer == 1)
                 getAuctionItem(server, user);
             else if(answer == 2)
@@ -57,9 +58,9 @@ public final class Buyer extends Client {
     }
     private static void bidItem(IBuyer server, User user) {
         Scanner scanner = new Scanner(System.in);
-        System.out.println("Please enter the auction id: ");
+        System.out.print("Please enter the auction id: ");
         int auctionId = scanner.nextInt();
-        System.out.println("Please enter the bidding amount: ");
+        System.out.print("Please enter the bidding amount: ");
         int bid = scanner.nextInt();
         System.out.println();
         try {
@@ -89,20 +90,19 @@ public final class Buyer extends Client {
                     Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
             @SuppressWarnings("unchecked")
             var hashMap = (HashMap<Integer, AuctionItem>) sealedObject.getObject(listKey);
+            if(hashMap == null) return;
 
-//            List<AuctionItem> items = new ArrayList<>(hashMap.size());
-//
-//            hashMap.forEach((key, value) -> items.add(value));
-//
-//            items.sort(Comparator.reverseOrder());
-//            if(items.size() == 0)
-//                System.out.println("There is no item in the auction list");
-//            else
-//                items.forEach(System.out::println);
-//
-            System.out.println();
+            List<AuctionItem> items = new ArrayList<>(hashMap.size());
 
-            hashMap.forEach((key, value) -> System.out.println("The auction id is: " + key + " " + value));
+            hashMap.forEach((key, value) -> items.add(value));
+
+            items.sort(Comparator.reverseOrder());
+
+            if(items.size() == 0)
+                System.out.println("There is no item in the auction list");
+            else
+                items.forEach(System.out::println);
+
         }
         catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t couldn't print the list");

@@ -70,6 +70,7 @@ public final class Server implements IBuyer, ISeller, IServer {
     @Override
     public BidResponse bidItem(BidRequest bidRequest, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
+        var user = request.getUser();
         if(!auctionItems.containsKey(bidRequest.auctionId()))
             return new BidResponse(false, -1,-1);
         var item = auctionItems.get(bidRequest.auctionId());
@@ -108,10 +109,10 @@ public final class Server implements IBuyer, ISeller, IServer {
             while(element.getId() == itemId)
                 itemId = Constants.generateRandomInt();
 
-        var request = readClientRequest(clientRequest);
+        readClientRequest(clientRequest);
         try {
             item = (AuctionItem) sealedItem.getObject(secretKey);
-            item = item.setNewId(itemId, item);
+            item = item.setNewId(itemId);
         } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t couldn't unlock the sealed item");
             throw new RuntimeException(exception);
@@ -123,6 +124,7 @@ public final class Server implements IBuyer, ISeller, IServer {
         for(Integer element : auctionItems.keySet())
             while(element == auctionId)
                 auctionId = Constants.generateRandomInt();
+        item = item.setAuctionId(auctionId);
         auctionItems.put(auctionId,item);
         saveList();
         System.out.println("Received item with id: " + item.getId() + "\n");

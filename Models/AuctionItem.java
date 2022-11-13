@@ -2,6 +2,7 @@ import java.io.Serializable;
 import java.util.Objects;
 
 public final class AuctionItem implements Serializable, Comparable<AuctionItem> {
+    private final int auctionId;
     private final int id;
     private final String itemName;
     private final String sellerName;
@@ -10,12 +11,13 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     private final String description;
     private String highestBidName = "None";
     private int currentBid = 0;
-    public static final AuctionItem EMPTY = new AuctionItem(-1, "N/A", "N/A",
+    public static final AuctionItem EMPTY = new AuctionItem(-1, -1, "N/A", "N/A",
                                                         0, 0, "N/A");
 
-    public AuctionItem(int id, String itemName, String sellerName,
+    public AuctionItem(int id, int auctionId, String itemName, String sellerName,
                        int startingPrice, int reservePrice, String description) {
         this.id = id;
+        this.auctionId = auctionId;
         this.itemName = itemName;
         this.sellerName = sellerName;
         this.startingPrice = startingPrice;
@@ -23,9 +25,14 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         this.description = description;
     }
 
-    public AuctionItem setNewId(int id, AuctionItem oldItem) {
-        return new AuctionItem(id, oldItem.itemName, oldItem.sellerName,
-                oldItem.startingPrice, oldItem.reservePrice, oldItem.description);
+    public AuctionItem setNewId(int id) {
+        return new AuctionItem(id, this.auctionId, this.itemName, this.sellerName,
+                this.startingPrice, this.reservePrice, this.description);
+    }
+
+    public AuctionItem setAuctionId(int auctionId) {
+        return new AuctionItem(id, auctionId, this.itemName, this.sellerName,
+                this.startingPrice, this.reservePrice, this.description);
     }
 
     public String getItemName() {
@@ -88,11 +95,12 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
 
     @Override
     public String toString() {
-        return "\n------------\nSeller name = " + sellerName +
+        return  "The auction id is:\t " + auctionId +
+                "\n-----------------------------\nSeller name = " + sellerName +
                 "\nItem name = " + itemName + "\nStarting Price = " + startingPrice +
                 "\nCurrent bid = " + currentBid +
                 "\nDescription = " + description +
-                "\n------------\n";
+                "\n-----------------------------\n";
     }
 
     @Override

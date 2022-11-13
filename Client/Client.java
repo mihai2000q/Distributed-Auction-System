@@ -16,7 +16,7 @@ public abstract class Client {
         String username = scanner.nextLine();
         System.out.print("password: ");
         String password = scanner.nextLine();
-        var user = new User(Constants.generateRandomInt(),username, password, clientType);
+        var user = new User(-1, username, password, clientType);
         try {
             if(server.login(createSealedRequest(user)))
                 System.out.println("\nLogged in successfully\n");
@@ -61,6 +61,7 @@ public abstract class Client {
             return null;
         user = response.y();
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
+        System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
     }
 
