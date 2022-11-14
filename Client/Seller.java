@@ -1,5 +1,4 @@
 import java.rmi.RemoteException;
-import java.text.ParseException;
 import java.util.Scanner;
 
 public final class Seller extends Client {
@@ -23,7 +22,7 @@ public final class Seller extends Client {
                             2 To remove an auction
                             3 To logout
                             """);
-            answer = validateInteger(scanner.nextLine());
+            answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
             if(answer == 1)
                 createAuction(server, user);
@@ -38,17 +37,17 @@ public final class Seller extends Client {
         int reservePrice;
         Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the item name: ");
-        itemName = scanner.nextLine();
+        itemName = Normalization.normalizeString(scanner.nextLine());
         System.out.print("What is the starting price: ");
-        startingPrice = validateInteger(scanner.nextLine());
+        startingPrice = Validation.validateInteger(scanner.nextLine());
         System.out.print("What is the reserve price: ");
-        reservePrice = validateInteger(scanner.nextLine());
+        reservePrice = Validation.validateInteger(scanner.nextLine());
         if(reservePrice < startingPrice) {
             System.out.println("The reserved price cannot be lower than the starting price");
             return;
         }
         System.out.print("What is the description of the item: ");
-        String description = scanner.nextLine();
+        String description = Normalization.normalizeString(scanner.nextLine());
         //the id will be computed later in the server
         final AuctionItem item = new AuctionItem(-1, -1, itemName, user.getUsername(),
                                                 startingPrice, reservePrice, description);
@@ -70,7 +69,7 @@ public final class Seller extends Client {
     private static void closeAuction(ISeller server, User user) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the auction id: ");
-        int auctionId = scanner.nextInt();
+        int auctionId = Validation.validateInteger(scanner.nextLine());
         try {
             var response = server.closeAuction(auctionId, createSealedRequest(user));
             if(response.hasItem() && response.isAuthorized())

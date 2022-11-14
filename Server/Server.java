@@ -240,12 +240,12 @@ public final class Server implements IBuyer, ISeller, IServer {
     }
     private void initUsers() {
         users.add(new User(Constants.generateRandomInt(),
-                "James", "james123", Constants.ClientType.Seller));
+                "james", "james123", Constants.ClientType.Seller));
         users.add(new User(Constants.generateRandomInt(),
-                "Chris", "chris123", Constants.ClientType.Seller));
+                "chris", "chris123", Constants.ClientType.Seller));
         users.add(new User(Constants.generateRandomInt(),
-                "Edward", "edi123", Constants.ClientType.Buyer));
+                "edward", "edi123", Constants.ClientType.Buyer));
         users.add(new User(Constants.generateRandomInt(),
-                "Michael", "michael123", Constants.ClientType.Buyer));
+                "michael", "michael123", Constants.ClientType.Buyer));
     }
 }

@@ -13,7 +13,7 @@ public abstract class Client {
     protected static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("username: ");
-        String username = scanner.nextLine();
+        String username = Normalization.normalizeUsername(scanner.nextLine());
         System.out.print("password: ");
         String password = scanner.nextLine();
         var user = new User(-1, username, password, clientType);
@@ -63,14 +63,5 @@ public abstract class Client {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
         System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
-    }
-    protected static int validateInteger(String number) {
-        try {
-            return Integer.parseInt(number);
-        }
-        catch (Exception exception) {
-            System.out.println("Please insert a number instead!!!");
-            return 0;
-        }
     }
 }

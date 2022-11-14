@@ -26,7 +26,7 @@ public final class Buyer extends Client {
                             3 to see whole list
                             4 to logout
                             """);
-            answer = validateInteger(scanner.nextLine());
+            answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
             if(answer == 1)
                 getAuctionItem(server, user);
@@ -39,8 +39,8 @@ public final class Buyer extends Client {
     private static void getAuctionItem(IBuyer server, User user) {
         try {
             System.out.print("Please enter an id: ");
-            var sealedObject = server.getSpec(new Scanner(System.in).nextInt(),
-                    createSealedRequest(user));
+            var sealedObject = server.getSpec(
+                    Validation.validateInteger(new Scanner(System.in).nextLine()), createSealedRequest(user));
 
             var itemKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
@@ -59,9 +59,9 @@ public final class Buyer extends Client {
     private static void bidItem(IBuyer server, User user) {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the auction id: ");
-        int auctionId = scanner.nextInt();
+        int auctionId = Validation.validateInteger(scanner.nextLine());
         System.out.print("Please enter the bidding amount: ");
-        int bid = scanner.nextInt();
+        int bid = Validation.validateInteger(scanner.nextLine());
         System.out.println();
         try {
             var response = server.bidItem(new BidRequest(auctionId, bid),
