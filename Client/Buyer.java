@@ -26,7 +26,7 @@ public final class Buyer extends Client {
                             3 to see whole list
                             4 to logout
                             """);
-            answer = scanner.nextInt();
+            answer = validateInteger(scanner.nextLine());
             System.out.println();
             if(answer == 1)
                 getAuctionItem(server, user);
@@ -64,10 +64,12 @@ public final class Buyer extends Client {
         int bid = scanner.nextInt();
         System.out.println();
         try {
-            var response = server.bidItem(new BidRequest(auctionId, bid, user.getUsername()),
+            var response = server.bidItem(new BidRequest(auctionId, bid),
                     createSealedRequest(user));
             if(response.hasItem() && response.bidComparison() > 0)
                 System.out.println("Bid successfully");
+            else if(!response.hasItem())
+                System.out.println("There is no auction with that id");
             else if(response.startingPriceComparison() == 0)
                 System.out.println("The bid is equal to the starting price");
             else if(response.startingPriceComparison() == -1)
@@ -76,8 +78,7 @@ public final class Buyer extends Client {
                 System.out.println("The bid is equal to the current bid");
             else if(response.bidComparison() == -1)
                 System.out.println("The bid is lower than the current bid");
-            else
-                System.out.println("There is no auction with that id");
+
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't bid the item");
             throw new RuntimeException(exception);

@@ -64,5 +64,13 @@ public abstract class Client {
         System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
     }
-
+    protected static int validateInteger(String number) {
+        try {
+            return Integer.parseInt(number);
+        }
+        catch (Exception exception) {
+            System.out.println("Please insert a number instead!!!");
+            return 0;
+        }
+    }
 }

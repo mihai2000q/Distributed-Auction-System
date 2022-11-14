@@ -1,3 +1,7 @@
+if [ ! -d out ]
+then
+	mkdir out
+fi
 
 for i in */;
 do
@@ -7,7 +11,7 @@ cd out
 javac *.java
 
 start rmiregistry
-sleep 2
+sleep 2.5
 start java Server.java
 
 exit

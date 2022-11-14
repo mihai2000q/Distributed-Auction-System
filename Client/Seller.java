@@ -23,7 +23,7 @@ public final class Seller extends Client {
                             2 To remove an auction
                             3 To logout
                             """);
-            answer = scanner.nextInt();
+            answer = validateInteger(scanner.nextLine());
             System.out.println();
             if(answer == 1)
                 createAuction(server, user);
@@ -86,15 +86,6 @@ public final class Seller extends Client {
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't close auction");
             throw new RuntimeException(exception);
-        }
-    }
-    private static int validateInteger(String number) {
-        try {
-            return Integer.parseInt(number);
-        }
-        catch (Exception exception) {
-            System.out.println("Please insert a number instead!!!");
-            return 0;
         }
     }
 }

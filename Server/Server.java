@@ -9,10 +9,11 @@ import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public final class Server implements IBuyer, ISeller, IServer {
     private final Map<Integer, AuctionItem> auctionItems;
-    private final Map<User, List<Bid>> biddings;
+    private final Map<Integer, List<Bid>> bids;
     private final List<User> users;
     private final List<User> activeUsers;
     private final IEncryptionService encryptionService;
@@ -20,10 +21,11 @@ public final class Server implements IBuyer, ISeller, IServer {
         super();
         encryptionService = new EncryptionService();
         auctionItems = new HashMap<>(Constants.LIST_CAPACITY);
-        biddings = new HashMap<>();
+        bids = new HashMap<>();
         users = new ArrayList<>(Constants.USERS_CAPACITY);
         activeUsers = new ArrayList<>();
-        loadList();
+        loadMapFile(Constants.LIST_PATH, auctionItems);
+        loadMapFile(Constants.BIDS_PATH, bids);
         initUsers();
     }
     public static void main(String[] args) {
@@ -41,8 +43,7 @@ public final class Server implements IBuyer, ISeller, IServer {
     }
     @Override
     public boolean login(SealedObject clientRequest) throws RemoteException {
-        var request = readClientRequest(clientRequest);
-        var user = request.getUser();
+        var user = readClientRequest(clientRequest).getUser();
         if(!users.contains(user)) {
             System.out.println("Failed login attempt");
             return false;
@@ -71,9 +72,10 @@ public final class Server implements IBuyer, ISeller, IServer {
     public BidResponse bidItem(BidRequest bidRequest, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
-        if(!auctionItems.containsKey(bidRequest.auctionId()))
+        var auctionId = bidRequest.auctionId();
+        if(!auctionItems.containsKey(auctionId))
             return new BidResponse(false, -1,-1);
-        var item = auctionItems.get(bidRequest.auctionId());
+        var item = auctionItems.get(auctionId);
 
         if(bidRequest.bid() < item.getStartingPrice())
             return new BidResponse(true, -1,-1);
@@ -85,15 +87,37 @@ public final class Server implements IBuyer, ISeller, IServer {
         else if(bidRequest.bid() == item.getCurrentBid())
             return new BidResponse(true, 1,0);
 
-        item.setNewBid(bidRequest.bidder(), bidRequest.bid());
-        if(item.getCurrentBid() >= item.getReservePrice()) {
-            System.out.println(item.getItemName() + " has reached the reserve price of " + item.getReservePrice() +
-            " with a bid of " + item.getCurrentBid());
-            closeAuctionByItemId(bidRequest.auctionId(), item);
+        List<Bid> query = new ArrayList<>();
+        if(bids.get(auctionId).size() == 0) {
+            System.out.println("First bid on \"" + item.getItemName() + "\" !!!!");
+            bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), user.getUsername(), bidRequest.bid()));
+            saveFile(Constants.BIDS_PATH, bids);
         }
         else
-            System.out.println(item.getHighestBidName() + " changed the bidding of the item " +
-                    "with the auction id " + bidRequest.auctionId());
+            query = bids.get(auctionId).stream().filter(x ->
+                    Objects.equals(x.getUsername(), user.getUsername())).collect(Collectors.toList());
+
+        //every user should have ONLY one bid on an item at a time
+        if (query.size() > 1)
+            throw new RuntimeException("too many elements in the bid map");
+
+        var result = query.size() == 0 ? Bid.EMPTY : query.get(0);
+
+        if (result.isEmpty())
+            System.out.println(user.getUsername() + " made its first bid on " + item.getItemName());
+        else
+            System.out.println(user.getUsername() + " changed its bid " + item.getItemName() + " from " +
+                    result.getBid() + " to " + bidRequest.bid());
+        bids.get(auctionId).remove(result);
+        bids.get(auctionId).add(new Bid(result.getId(), result.getUsername(), bidRequest.bid()));
+        saveFile(Constants.BIDS_PATH, bids);
+
+        item.setNewBid(user.getUsername(), bidRequest.bid());
+        if(item.getCurrentBid() >= item.getReservePrice()) {
+            System.out.println("\"" + item.getItemName() + "\" has reached the reserve price of " +
+                    item.getReservePrice() + " with a bid of " + item.getCurrentBid());
+            closeAuctionByItemId(auctionId, "");
+        }
         return new BidResponse(true, 1,1);
     }
     @Override
@@ -109,7 +133,8 @@ public final class Server implements IBuyer, ISeller, IServer {
             while(element.getId() == itemId)
                 itemId = Constants.generateRandomInt();
 
-        readClientRequest(clientRequest);
+        var request = readClientRequest(clientRequest);
+        var user = request.getUser();
         try {
             item = (AuctionItem) sealedItem.getObject(secretKey);
             item = item.setNewId(itemId);
@@ -126,9 +151,11 @@ public final class Server implements IBuyer, ISeller, IServer {
                 auctionId = Constants.generateRandomInt();
         item = item.setAuctionId(auctionId);
         auctionItems.put(auctionId,item);
-        saveList();
-        System.out.println("Received item with id: " + item.getId() + "\n");
-        System.out.println("Created auction with the id: " + auctionId + "\n");
+        saveFile(Constants.LIST_PATH, auctionItems);
+        System.out.println(Constants.SERVER_NAME + " received item with id: " + item.getId() + "\n");
+        System.out.println(user.getUsername() + " created auction with the id: " + auctionId + "\n");
+        bids.put(auctionId, new ArrayList<>());
+        saveFile(Constants.BIDS_PATH, bids);
         return new Pair<>(true, auctionId);
     }
     @Override
@@ -140,12 +167,17 @@ public final class Server implements IBuyer, ISeller, IServer {
         var item = auctionItems.get(auctionId);
         if(!Objects.equals(user.getUsername(), item.getSellerName()))
             return new CloseAuctionResponse(true, false, "N/A");
-        closeAuctionByItemId(auctionId, item);
+        closeAuctionByItemId(auctionId, user.getUsername());
         System.out.println();
+        saveFile(Constants.LIST_PATH, auctionItems);
         return new CloseAuctionResponse(true, true, item.getHighestBidName());
     }
-    private void closeAuctionByItemId(int auctionId, AuctionItem item) {
-        System.out.println("Closed auction for the item with the id: " + auctionItems.remove(auctionId).getId());
+    private void closeAuctionByItemId(int auctionId, String username) {
+        bids.remove(auctionId);
+        saveFile(Constants.BIDS_PATH, bids);
+        var item = auctionItems.remove(auctionId);
+        System.out.println((Objects.equals(username, "") ? Constants.SERVER_NAME : username) +
+                " closed the auction with id: " + auctionId);
         if(item.isBid())
             System.out.println(item.getHighestBidName() + " won with a bidding of " + item.getCurrentBid());
         else
@@ -154,7 +186,7 @@ public final class Server implements IBuyer, ISeller, IServer {
     @Override
     public SealedObject getList(SealedObject clientRequest) throws RemoteException {
         readClientRequest(clientRequest);
-        System.out.println("Sent the whole list\n");
+        System.out.println("Sent the whole list");
         return encryptionService.encryptObject(auctionItems,
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
@@ -175,33 +207,34 @@ public final class Server implements IBuyer, ISeller, IServer {
         System.out.println();
         return request;
     }
-    private void loadList() {
-        if(!Files.exists(Path.of(Constants.LIST_PATH)))
+    private <T, E> void loadMapFile(String path, Map<T, E> map) {
+        if(!Files.exists(Path.of(path)))
             return;
         try {
-            ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(Constants.LIST_PATH));
+            ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(path));
             @SuppressWarnings("unchecked")
-            var outputList = (Map<Integer, AuctionItem>) objectInputStream.readObject();
+            var outputList = (Map<T, E>) objectInputStream.readObject();
             if(outputList != null)
-                auctionItems.putAll(outputList);
+                map.putAll(outputList);
             objectInputStream.close();
         } catch (IOException exception) {
-            System.out.println("ERROR:\t problem while trying to read the list file");
+            System.out.println("ERROR:\t problem while trying to read the file");
             throw new RuntimeException(exception);
         } catch (ClassNotFoundException e) {
             System.out.println("ERROR:\t couldn't recreate the list");
             throw new RuntimeException(e);
         }
     }
-    private void saveList() {
+    private void saveFile(String path, Object map) {
         try {
-            if(!Files.exists(Path.of(Constants.LIST_PATH)))
-                Files.createDirectory(Path.of(Constants.LIST_PATH.split("/")[0]));
-            ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(Constants.LIST_PATH));
-            objectOutputStream.writeObject(auctionItems);
+            var directoryPath = Path.of(path.split("/")[0]);
+            if(!Files.exists(directoryPath))
+                Files.createDirectory(directoryPath);
+            ObjectOutputStream objectOutputStream = new ObjectOutputStream(new FileOutputStream(path));
+            objectOutputStream.writeObject(map);
             objectOutputStream.close();
         } catch (IOException exception) {
-            System.out.println("ERROR:\t problem while creating the list file");
+            System.out.println("ERROR:\t problem while creating the file");
             throw new RuntimeException(exception);
         }
     }
@@ -214,6 +247,5 @@ public final class Server implements IBuyer, ISeller, IServer {
                 "Edward", "edi123", Constants.ClientType.Buyer));
         users.add(new User(Constants.generateRandomInt(),
                 "Michael", "michael123", Constants.ClientType.Buyer));
-        users.forEach(user -> biddings.put(user, new ArrayList<>()));
     }
 }
