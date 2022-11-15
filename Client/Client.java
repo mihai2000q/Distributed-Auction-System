@@ -15,7 +15,7 @@ public abstract class Client {
         System.out.print("username: ");
         String username = Normalization.normalizeUsername(scanner.nextLine());
         System.out.print("password: ");
-        String password = scanner.nextLine();
+        String password = Arrays.toString(System.console().readPassword());
         var user = new User(-1, username, password, clientType);
         try {
             if(server.login(createSealedRequest(user)))

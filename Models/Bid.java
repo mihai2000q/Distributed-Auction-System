@@ -1,7 +1,7 @@
 import java.io.Serializable;
 import java.util.Objects;
 
-public class Bid implements Serializable {
+public final class Bid implements Serializable {
     private final int id;
     private final String username;
     private final int bid;

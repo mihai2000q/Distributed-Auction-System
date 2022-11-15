@@ -15,9 +15,8 @@ public final class EncryptionService implements IEncryptionService{
         SealedObject result;
         try {
             Cipher cipher = Cipher.getInstance(Algorithm);
-            SecureRandom secureRandom = new SecureRandom();
             byte[] aesKey = new byte[16];
-            secureRandom.nextBytes(aesKey);
+            new SecureRandom().nextBytes(aesKey);
             SecretKey secretKey = new SecretKeySpec(aesKey, Algorithm);
             cipher.init(Cipher.ENCRYPT_MODE, secretKey);
             saveKey(secretKey, Password, Alias, Path);

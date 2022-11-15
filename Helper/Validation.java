@@ -1,4 +1,5 @@
-public abstract class Validation {
+public final class Validation {
+    private Validation() {}
     public static int validateInteger(String number) {
         try {
             return Integer.parseInt(number);

@@ -1,4 +1,5 @@
-public abstract class Normalization {
+public final class Normalization {
+    private Normalization() {}
     public static String normalizeString(String str) {
         str = normalizeUsername(str);
         var firstLetter = String.valueOf(str.charAt(0)).toUpperCase();
