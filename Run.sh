@@ -7,6 +7,7 @@ for i in */;
 do
     cp $i/* out/
 done
+
 cd out
 javac *.java
 

@@ -1,4 +1,5 @@
 import javax.crypto.SealedObject;
+import java.io.Console;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
@@ -11,11 +12,12 @@ public abstract class Client {
         super();
     }
     protected static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
-        Scanner scanner = new Scanner(System.in);
+        final Scanner scanner = new Scanner(System.in);
+        final Console console = System.console();
         System.out.print("username: ");
         String username = Normalization.normalizeUsername(scanner.nextLine());
         System.out.print("password: ");
-        String password = Arrays.toString(System.console().readPassword());
+        String password = new String(console.readPassword());
         var user = new User(-1, username, password, clientType);
         try {
             if(server.login(createSealedRequest(user)))
