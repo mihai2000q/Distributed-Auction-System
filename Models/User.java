@@ -15,9 +15,6 @@ public final class User implements Serializable {
         this.password = password;
         this.clientType = clientType;
     }
-    public Constants.ClientType getType(){
-        return clientType;
-    }
     public String getUsername(){
         return username;
     }

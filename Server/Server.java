@@ -2,6 +2,7 @@ import javax.crypto.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.rmi.Remote;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -11,13 +12,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class Server implements IBuyer, ISeller, IServer {
+public final class Server implements IBuyer, ISeller {
     private int serverChallengeNumber;
     private int clientChallengeNumber;
     private final Map<Integer, AuctionItem> auctionItems;
     private final Map<Integer, List<Bid>> bids;
     private final List<User> users;
-    private final List<User> activeUsers;
+    private final Collection<User> activeUsers;
     private final IEncryptionService encryptionService;
     public Server() {
         super();
@@ -34,7 +35,7 @@ public final class Server implements IBuyer, ISeller, IServer {
         //launching the server
         try {
             Server server = new Server();
-            IServer stub = (IServer) UnicastRemoteObject.exportObject(server, Constants.SERVER_PORT);
+            Remote stub = UnicastRemoteObject.exportObject(server, Constants.SERVER_PORT);
             Registry registry = LocateRegistry.getRegistry();
             registry.rebind(Constants.SERVER_NAME, stub);
             System.out.println("Server ready\n");
@@ -44,35 +45,43 @@ public final class Server implements IBuyer, ISeller, IServer {
         }
     }
     @Override
-    public int requestServerChallenge() throws RemoteException {
+    public int requestServerChallenge(SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
         serverChallengeNumber = Constants.generateRandomInt();
+        System.out.println("Server sent authentication challenge for client");
         return serverChallengeNumber;
     }
     @Override
-    public boolean sendEncryptedServerChallenge(SealedObject randomNumber) throws RemoteException {
-        int number;
+    public boolean sendEncryptedServerChallenge(SealedObject randomNumber, SealedObject clientRequest)
+            throws RemoteException {
         try {
-            number = (int) randomNumber.getObject(
+            readClientRequest(clientRequest);
+            int number = (int) randomNumber.getObject(
                     (encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH)));
-        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException e) {
-            throw new RuntimeException(e);
-        }
-        if(number == serverChallengeNumber) {
-            System.out.println("Server authenticated the client");
-            return true;
-        }
-        else {
-            System.out.println("Server couldn't authenticate the client");
-            return false;
+            if(number == serverChallengeNumber) {
+                System.out.println("Server authenticated the client");
+                return true;
+            }
+            else {
+                System.out.println("Server couldn't authenticate the client");
+                return false;
+            }
+        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.out.println("ERROR:\t problem while decrypting the random number");
+            throw new RuntimeException(exception);
         }
     }
     @Override
-    public void sendClientChallenge(int randomNumber) throws RemoteException {
+    public void sendClientChallenge(int randomNumber, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
         clientChallengeNumber = randomNumber;
+        System.out.println("Server received the client challenge");
     }
     @Override
-    public SealedObject requestEncryptedClientChallenge() throws RemoteException {
+    public SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        System.out.println("Server got authenticated by client");
         return encryptionService.encryptObject(clientChallengeNumber,
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH);
@@ -90,8 +99,7 @@ public final class Server implements IBuyer, ISeller, IServer {
     }
     @Override
     public void logout(SealedObject clientRequest) throws RemoteException {
-        var request = readClientRequest(clientRequest);
-        activeUsers.remove(request.getUser());
+        activeUsers.remove(readClientRequest(clientRequest).getUser());
         System.out.println("Number of active users is " + activeUsers.size());
     }
     public AuctionItem getSpec(int auctionId){
@@ -124,25 +132,27 @@ public final class Server implements IBuyer, ISeller, IServer {
             return new BidResponse(true, 1,0);
 
         List<Bid> query = new ArrayList<>();
-        if(bids.get(auctionId).size() == 0) {
+        if(bids.get(auctionId).size() == 0)
             System.out.println("First bid on \"" + item.getItemName() + "\" !!!!");
-            bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), user.getUsername(), bidRequest.bid()));
-            saveFile(Constants.BIDS_PATH, bids);
-        }
         else
             query = bids.get(auctionId).stream().filter(x ->
                     Objects.equals(x.getUsername(), user.getUsername())).collect(Collectors.toList());
 
         //every user should have ONLY one bid on an item at a time
         if (query.size() > 1)
-            throw new RuntimeException("too many elements in the bid map");
+            throw new RuntimeException("ERROR:\t too many elements in the bid map");
 
         var result = query.size() == 0 ? Bid.EMPTY : query.get(0);
 
-        if (result.isEmpty())
-            System.out.println(user.getUsername() + " made its first bid on " + item.getItemName());
+        if (result.isEmpty()) {
+            System.out.println(Normalization.normalizeString(user.getUsername()) +
+                    " made its first bid on " + item.getItemName());
+            bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), user.getUsername(), bidRequest.bid()));
+            saveFile(Constants.BIDS_PATH, bids);
+        }
         else
-            System.out.println(user.getUsername() + " changed its bid " + item.getItemName() + " from " +
+            System.out.println(Normalization.normalizeString(user.getUsername()) +
+                    " changed its bid for \"" + item.getItemName() + "\" from " +
                     result.getBid() + " to " + bidRequest.bid());
         bids.get(auctionId).remove(result);
         bids.get(auctionId).add(new Bid(result.getId(), result.getUsername(), bidRequest.bid()));

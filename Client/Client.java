@@ -14,6 +14,40 @@ public abstract class Client {
     public Client() {
         super();
     }
+    private static<T extends IAuthentication> boolean authentify(T server) {
+        try {
+            final var serverChallenge = server.requestServerChallenge(createSealedRequest(User.EMPTY));
+            var check = server.sendEncryptedServerChallenge(encryptionService.encryptObject(
+                            serverChallenge, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                            Constants.AUTHENTICATION_KEY_ALIAS,Constants.AUTHENTICATION_SECRET_KEY_PATH),
+                    createSealedRequest(User.EMPTY));
+            if(!check) {
+                System.out.println("Authentication failed!!!");
+                return false;
+            }
+            else
+                System.out.println("Server authenticated Client");
+
+            final int clientChallenge = Constants.generateRandomInt();
+            server.sendClientChallenge(clientChallenge, createSealedRequest(User.EMPTY));
+            var obj = server.requestEncryptedClientChallenge(createSealedRequest(User.EMPTY));
+            int serverResponse = (int) obj.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH));
+            if(serverResponse == clientChallenge)
+                System.out.println("Client authenticated Server");
+            else {
+                System.out.println("Client could not authenticate the server!!!");
+                return false;
+            }
+        } catch (RemoteException exception) {
+            System.out.println("ERROR:\t problem while authenticating");
+            throw new RuntimeException(exception);
+        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.out.println("ERROR:\t problem while trying to use the shared key for authentication");
+            throw new RuntimeException(exception);
+        }
+        return true;
+    }
     private static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
         final Scanner scanner = new Scanner(System.in);
         final Console console = System.console();
@@ -70,36 +104,5 @@ public abstract class Client {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
         System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
-    }
-    private static<T extends IAuthentication> boolean authentify(T server) {
-        try {
-            var randomNumber = server.requestServerChallenge();
-            var check = server.sendEncryptedServerChallenge(encryptionService.encryptObject(
-                    randomNumber, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
-                    Constants.AUTHENTICATION_KEY_ALIAS,Constants.AUTHENTICATION_SECRET_KEY_PATH));
-            if(!check) {
-                System.out.println("Authentication failed!!!");
-                return false;
-            }
-
-            int clientChallenge = Constants.generateRandomInt();
-            server.sendClientChallenge(clientChallenge);
-            var obj = server.requestEncryptedClientChallenge();
-            int serverResponse = (int) obj.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
-                    Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH));
-            if(serverResponse == clientChallenge)
-                System.out.println("Client authenticated Server");
-            else {
-                System.out.println("Client could not authenticate the server!!!");
-                return false;
-            }
-        } catch (RemoteException exception) {
-            System.out.println("ERROR:\t problem while authenticating");
-            throw new RuntimeException(exception);
-        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
-            System.out.println("ERROR:\t problem while trying to use the shared key for authentication");
-            throw new RuntimeException(exception);
-        }
-        return true;
     }
 }

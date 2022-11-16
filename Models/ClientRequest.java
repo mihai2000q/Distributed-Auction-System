@@ -20,6 +20,10 @@ public final class ClientRequest implements Serializable {
 
     @Override
     public String toString() {
-        return "This request was made by " + user.getUsername() + " and it got the id: " + id;
+        return "This request" + (user.isEmpty()
+                                ? ""
+                                : " was made by " +
+                                    Normalization.normalizeString(user.getUsername()) + " and it") +
+                " got the id: " + id;
     }
 }

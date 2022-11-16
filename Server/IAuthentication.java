@@ -3,8 +3,8 @@ import java.rmi.Remote;
 import java.rmi.RemoteException;
 
 public interface IAuthentication extends Remote {
-    int requestServerChallenge() throws RemoteException;
-    boolean sendEncryptedServerChallenge(SealedObject randomNumber) throws RemoteException;
-    void sendClientChallenge(int randomNumber) throws RemoteException;
-    SealedObject requestEncryptedClientChallenge() throws RemoteException;
+    int requestServerChallenge(SealedObject clientRequest) throws RemoteException;
+    boolean sendEncryptedServerChallenge(SealedObject randomNumber, SealedObject clientRequest) throws RemoteException;
+    void sendClientChallenge(int randomNumber, SealedObject clientRequest) throws RemoteException;
+    SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) throws RemoteException;
 }
