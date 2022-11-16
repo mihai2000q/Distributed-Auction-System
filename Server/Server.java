@@ -12,6 +12,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public final class Server implements IBuyer, ISeller, IServer {
+    private int serverChallengeNumber;
+    private int clientChallengeNumber;
     private final Map<Integer, AuctionItem> auctionItems;
     private final Map<Integer, List<Bid>> bids;
     private final List<User> users;
@@ -40,6 +42,40 @@ public final class Server implements IBuyer, ISeller, IServer {
             System.err.println("Error\t: problem while trying to launch the server");
             e.printStackTrace();
         }
+    }
+    @Override
+    public int requestServerChallenge() throws RemoteException {
+        serverChallengeNumber = Constants.generateRandomInt();
+        return serverChallengeNumber;
+    }
+    @Override
+    public boolean sendEncryptedServerChallenge(SealedObject randomNumber) throws RemoteException {
+        int number;
+        try {
+            number = (int) randomNumber.getObject(
+                    (encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH)));
+        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException e) {
+            throw new RuntimeException(e);
+        }
+        if(number == serverChallengeNumber) {
+            System.out.println("Server authenticated the client");
+            return true;
+        }
+        else {
+            System.out.println("Server couldn't authenticate the client");
+            return false;
+        }
+    }
+    @Override
+    public void sendClientChallenge(int randomNumber) throws RemoteException {
+        clientChallengeNumber = randomNumber;
+    }
+    @Override
+    public SealedObject requestEncryptedClientChallenge() throws RemoteException {
+        return encryptionService.encryptObject(clientChallengeNumber,
+                Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH);
     }
     @Override
     public boolean login(SealedObject clientRequest) throws RemoteException {

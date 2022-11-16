@@ -1,9 +1,12 @@
 import javax.crypto.SealedObject;
 import java.io.Console;
+import java.io.IOException;
 import java.rmi.NotBoundException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public abstract class Client {
@@ -11,7 +14,7 @@ public abstract class Client {
     public Client() {
         super();
     }
-    protected static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
+    private static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
         final Scanner scanner = new Scanner(System.in);
         final Console console = System.console();
         System.out.print("username: ");
@@ -32,7 +35,7 @@ public abstract class Client {
         }
         return new Pair<>(true, user);
     }
-    protected static<T extends IAuthentification> void logout(T server, User user) {
+    private static<T extends IAuthentification> void logout(T server, User user) {
         try {
             server.logout(createSealedRequest(user));
         } catch (RemoteException exception) {
@@ -58,6 +61,8 @@ public abstract class Client {
             exception.printStackTrace();
             throw new RuntimeException(exception);
         }
+        if(!authentify(server))
+            return null;
         var response = login(server, clientType);
         if(!response.x())
             return null;
@@ -65,5 +70,36 @@ public abstract class Client {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
         System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
+    }
+    private static<T extends IAuthentication> boolean authentify(T server) {
+        try {
+            var randomNumber = server.requestServerChallenge();
+            var check = server.sendEncryptedServerChallenge(encryptionService.encryptObject(
+                    randomNumber, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                    Constants.AUTHENTICATION_KEY_ALIAS,Constants.AUTHENTICATION_SECRET_KEY_PATH));
+            if(!check) {
+                System.out.println("Authentication failed!!!");
+                return false;
+            }
+
+            int clientChallenge = Constants.generateRandomInt();
+            server.sendClientChallenge(clientChallenge);
+            var obj = server.requestEncryptedClientChallenge();
+            int serverResponse = (int) obj.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH));
+            if(serverResponse == clientChallenge)
+                System.out.println("Client authenticated Server");
+            else {
+                System.out.println("Client could not authenticate the server!!!");
+                return false;
+            }
+        } catch (RemoteException exception) {
+            System.out.println("ERROR:\t problem while authenticating");
+            throw new RuntimeException(exception);
+        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.out.println("ERROR:\t problem while trying to use the shared key for authentication");
+            throw new RuntimeException(exception);
+        }
+        return true;
     }
 }
