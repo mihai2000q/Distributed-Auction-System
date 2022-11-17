@@ -24,17 +24,18 @@ public final class Buyer extends Client {
                             1 To get a specific item (need auction id)
                             2 To Bid
                             3 to see whole list
-                            4 to logout
+                            4 to get info an a item
+                            5 to logout
                             """);
             answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
-            if(answer == 1)
-                getAuctionItem(server, user);
-            else if(answer == 2)
-                bidItem(server, user);
-            else if(answer == 3)
-                printList(server, user);
-        } while(answer != 4);
+            switch (answer) {
+                case 1 -> getAuctionItem(server, user);
+                case 2 -> bidItem(server, user);
+                case 3 -> printList(server, user);
+                case 4 -> getInfoOnAuction(server, user);
+            }
+        } while(answer != 5);
     }
     private static void getAuctionItem(IBuyer server, User user) {
         try {
@@ -107,6 +108,18 @@ public final class Buyer extends Client {
         }
         catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t couldn't print the list");
+            throw new RuntimeException(exception);
+        }
+    }
+    private static void getInfoOnAuction(IBuyer server, User user) {
+        try {
+            System.out.print("Please enter the auction id: ");
+            System.out.println(server.getInfoOnAuction(
+                    Validation.validateInteger(new Scanner(System.in).nextLine()),
+                    createSealedRequest(user)));
+
+        } catch (RemoteException exception) {
+            System.out.println("ERROR:\t problem while trying to get info on an auction");
             throw new RuntimeException(exception);
         }
     }

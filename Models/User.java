@@ -15,8 +15,11 @@ public final class User implements Serializable {
         this.password = password;
         this.clientType = clientType;
     }
+    public int getId() {
+        return id;
+    }
     public String getUsername(){
-        return username;
+        return Normalization.normalizeString(username);
     }
     public void setEmail(String email) {
         this.email = email;

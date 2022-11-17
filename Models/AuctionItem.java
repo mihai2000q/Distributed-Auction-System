@@ -12,7 +12,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     private String highestBidName = "None";
     private int currentBid = 0;
     public static final AuctionItem EMPTY = new AuctionItem(-1, -1, "N/A", "N/A",
-                                                        0, 0, "N/A");
+                                                        -1, -1, "N/A");
 
     public AuctionItem(int id, int auctionId, String itemName, String sellerName,
                        int startingPrice, int reservePrice, String description) {
@@ -53,11 +53,11 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     }
 
     public String getSellerName() {
-        return sellerName;
+        return Normalization.normalizeString(sellerName);
     }
 
-    public String getHighestBidName() {
-        return highestBidName;
+    public String getHighestBidName(){
+        return Normalization.normalizeString(highestBidName);
     }
 
     public int getCurrentBid() {
@@ -96,7 +96,8 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     @Override
     public String toString() {
         return  "The auction id is:\t " + auctionId +
-                "\n-----------------------------\nSeller name = " + sellerName +
+                "\n-----------------------------\n" +
+                "Seller name = " + getSellerName() +
                 "\nItem name = " + itemName + "\nStarting Price = " + startingPrice +
                 "\nCurrent bid = " + currentBid +
                 "\nDescription = " + description +

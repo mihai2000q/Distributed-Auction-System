@@ -23,7 +23,7 @@ public final class ClientRequest implements Serializable {
         return "This request" + (user.isEmpty()
                                 ? ""
                                 : " was made by " +
-                                    Normalization.normalizeString(user.getUsername()) + " and it") +
+                                   user.getUsername() + " and it") +
                 " got the id: " + id;
     }
 }

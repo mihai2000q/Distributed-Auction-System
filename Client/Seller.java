@@ -24,10 +24,10 @@ public final class Seller extends Client {
                             """);
             answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
-            if(answer == 1)
-                createAuction(server, user);
-            else if(answer == 2)
-                closeAuction(server, user);
+            switch (answer) {
+                case 1 -> createAuction(server, user);
+                case 2 -> closeAuction(server, user);
+            }
         } while(answer != 3);
         System.exit(0);
     }
@@ -38,12 +38,12 @@ public final class Seller extends Client {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the item name: ");
         itemName = Normalization.normalizeString(scanner.nextLine());
-        System.out.print("What is the starting price: ");
-        startingPrice = Validation.validateInteger(scanner.nextLine());
         System.out.print("What is the reserve price: ");
         reservePrice = Validation.validateInteger(scanner.nextLine());
-        if(reservePrice < startingPrice) {
-            System.out.println("The reserved price cannot be lower than the starting price");
+        System.out.print("What is the starting price: ");
+        startingPrice = Validation.validateInteger(scanner.nextLine());
+        if(reservePrice > startingPrice) {
+            System.out.println("The reserved price cannot be higher than the starting price");
             return;
         }
         System.out.print("What is the description of the item: ");

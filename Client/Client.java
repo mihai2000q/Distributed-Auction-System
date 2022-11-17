@@ -18,9 +18,9 @@ public abstract class Client {
         try {
             final var serverChallenge = server.requestServerChallenge(createSealedRequest(User.EMPTY));
             var check = server.sendEncryptedServerChallenge(encryptionService.encryptObject(
-                            serverChallenge, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
-                            Constants.AUTHENTICATION_KEY_ALIAS,Constants.AUTHENTICATION_SECRET_KEY_PATH),
-                    createSealedRequest(User.EMPTY));
+                                    serverChallenge, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                                    Constants.AUTHENTICATION_KEY_ALIAS,Constants.AUTHENTICATION_SECRET_KEY_PATH),
+                                createSealedRequest(User.EMPTY));
             if(!check) {
                 System.out.println("Authentication failed!!!");
                 return false;
@@ -47,7 +47,7 @@ public abstract class Client {
             throw new RuntimeException(exception);
         }
         return true;
-    }
+    }   
     private static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
         final Scanner scanner = new Scanner(System.in);
         final Console console = System.console();
