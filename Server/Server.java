@@ -180,14 +180,14 @@ public final class Server implements IBuyer, ISeller {
                 Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
     }
     @Override
-    public String getInfoOnAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
+    public int getInfoOnAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
         var user = readClientRequest(clientRequest).getUser();
         if(user.getUsername().equals(winners.get(auctionId)))
-            return "You are the winner";
+            return 1;
         else if (Objects.equals(participants.getOrDefault(auctionId, ""), ""))
-            return "You are not the winner";
+            return 0;
         else
-            return "You are not authorized to access this information as you have not participated to this auction";
+            return -1;
     }
     @Override
     public Pair<Boolean, Integer> createAuction(SealedObject sealedItem, SealedObject clientRequest)

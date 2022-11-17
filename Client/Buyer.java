@@ -66,7 +66,7 @@ public final class Buyer extends Client {
         System.out.println();
         try {
             var response = server.bidItem(new BidRequest(auctionId, bid),
-                    createSealedRequest(user));
+                                        createSealedRequest(user));
             if(!response.hasItem())
                 System.out.println("There is no auction with that id");
             else if(response.startingPriceComparison() == 0)
@@ -114,9 +114,16 @@ public final class Buyer extends Client {
     private static void getInfoOnAuction(IBuyer server, User user) {
         try {
             System.out.print("Please enter the auction id: ");
-            System.out.println(server.getInfoOnAuction(
+            var response = server.getInfoOnAuction(
                     Validation.validateInteger(new Scanner(System.in).nextLine()),
-                    createSealedRequest(user)));
+                    createSealedRequest(user));
+            if(response > 0)
+                System.out.println("You are the winner");
+            else if (response == 0)
+                System.out.println("You are not the winner");
+            else
+                System.out.println("You are not authorized to access this information " +
+                                    "as you have not participated to this auction");
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t problem while trying to get info on an auction");
