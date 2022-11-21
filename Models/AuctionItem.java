@@ -9,6 +9,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
     private final int startingPrice;
     private final int reservePrice;
     private final String description;
+    private boolean ongoing = true;
     private String highestBidName = "None";
     private int currentBid = 0;
     public static final AuctionItem EMPTY = new AuctionItem(-1, -1, "N/A", "N/A",
@@ -70,6 +71,14 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
 
     public boolean isBid() {
         return !(currentBid == 0 && highestBidName.equals("None"));
+    }
+
+    public boolean isOngoing() {
+        return ongoing;
+    }
+
+    public void setOngoing(boolean ongoing) {
+        this.ongoing = ongoing;
     }
 
     public boolean isEmpty() {

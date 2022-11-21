@@ -67,7 +67,9 @@ public final class Buyer extends Client {
         try {
             var response = server.bidItem(new BidRequest(auctionId, bid),
                                         createSealedRequest(user));
-            if(!response.hasItem())
+            if(response.isEmpty())
+                System.out.println("YOU ARE NOT AUTHORIZED AS A SELLER TO BID!!!");
+            else if(!response.hasItem())
                 System.out.println("There is no auction with that id");
             else if(response.startingPriceComparison() == 0)
                 System.out.println("The bid is equal to the starting price");
@@ -91,20 +93,12 @@ public final class Buyer extends Client {
             var listKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
             @SuppressWarnings("unchecked")
-            var hashMap = (Map<Integer, AuctionItem>) sealedObject.getObject(listKey);
-            if(hashMap == null) return;
-
-            List<AuctionItem> items = new ArrayList<>(hashMap.size());
-
-            hashMap.forEach((key, value) -> items.add(value));
-
-            items.sort(Comparator.reverseOrder());
-
+            var items = (List<AuctionItem>) sealedObject.getObject(listKey);
+            if(items == null) return;
             if(items.size() == 0)
                 System.out.println("There is no item in the auction list");
             else
                 items.forEach(System.out::println);
-
         }
         catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t couldn't print the list");
@@ -117,13 +111,18 @@ public final class Buyer extends Client {
             var response = server.getInfoOnAuction(
                     Validation.validateInteger(new Scanner(System.in).nextLine()),
                     createSealedRequest(user));
-            if(response > 0)
-                System.out.println("You are the winner");
-            else if (response == 0)
+            if(!response.hasItem())
+                System.out.println("There's no such auction with that Id");
+            else if(!response.isAuthorized())
+                System.out.println("You are not authorized to access this information " +
+                        "as you have not participated to this auction");
+            else if(response.ongoing())
+                System.out.println("The auction is still ongoing");
+            else if (!response.isWinner())
                 System.out.println("You are not the winner");
             else
-                System.out.println("You are not authorized to access this information " +
-                                    "as you have not participated to this auction");
+                System.out.println("You are the winner");
+
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t problem while trying to get info on an auction");

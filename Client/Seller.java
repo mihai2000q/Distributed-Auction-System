@@ -49,8 +49,8 @@ public final class Seller extends Client {
         System.out.print("What is the description of the item: ");
         String description = Normalization.normalizeString(scanner.nextLine());
         //the id will be computed later in the server
-        final AuctionItem item = new AuctionItem(-1, -1, itemName, user.getUsername(),
-                                                startingPrice, reservePrice, description);
+        final AuctionItem item = new AuctionItem(AuctionItem.EMPTY.getId(), AuctionItem.EMPTY.getId(), itemName,
+                                                    user.getUsername(), startingPrice, reservePrice, description);
 
         var sealedItem = encryptionService.encryptObject(item, Constants.ENCRYPTION_ALGORITHM,
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
