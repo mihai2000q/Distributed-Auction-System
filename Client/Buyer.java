@@ -48,6 +48,7 @@ public final class Buyer extends Client {
 
             var item = (AuctionItem) sealedObject.getObject(itemKey);
 
+            System.out.println();
             if(item.isEmpty())
                 System.out.println("There's no item with the requested id");
             else
@@ -65,22 +66,18 @@ public final class Buyer extends Client {
         int bid = Validation.validateInteger(scanner.nextLine());
         System.out.println();
         try {
-            var response = server.bidItem(new BidRequest(auctionId, bid),
-                                        createSealedRequest(user));
-            if(response.isEmpty())
-                System.out.println("YOU ARE NOT AUTHORIZED AS A SELLER TO BID!!!");
-            else if(!response.hasItem())
+            var response = server.bidItem(
+                    encryptionService.encryptObject(new BidRequest(auctionId, bid), Constants.ENCRYPTION_ALGORITHM,
+                            Constants.PASSWORD, Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH),
+                    createSealedRequest(user));
+            if(!response.hasItem())
                 System.out.println("There is no auction with that id");
-            else if(response.startingPriceComparison() == 0)
-                System.out.println("The bid is equal to the starting price");
-            else if(response.startingPriceComparison() == -1)
-                System.out.println("The bid is lower than the starting price");
             else if(response.bidComparison() == 0)
-                System.out.println("The bid is equal to the current bid");
-            else if(response.bidComparison() == -1)
-                System.out.println("The bid is lower than the current bid");
+                System.out.println("Bid successful");
+            else if(response.bidComparison() < 0)
+                System.out.println("Bid successfully lowered");
             else
-                System.out.println("Bid successfully");
+                System.out.println("Bid successful and you are the highest bidder now!");
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't bid the item");
@@ -111,8 +108,9 @@ public final class Buyer extends Client {
             var response = server.getInfoOnAuction(
                     Validation.validateInteger(new Scanner(System.in).nextLine()),
                     createSealedRequest(user));
+            System.out.println();
             if(!response.hasItem())
-                System.out.println("There's no such auction with that Id");
+                System.out.println("There's no such auction with that id");
             else if(!response.isAuthorized())
                 System.out.println("You are not authorized to access this information " +
                         "as you have not participated to this auction");

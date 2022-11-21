@@ -29,7 +29,8 @@ public abstract class Client {
                 System.out.println("Server authenticated Client");
 
             final int clientChallenge = Constants.generateRandomInt();
-            server.sendClientChallenge(clientChallenge, createSealedRequest(User.EMPTY));
+            if(!server.sendClientChallenge(clientChallenge, createSealedRequest(User.EMPTY)))
+                System.out.println("Couldn't send the client challenge to the server");
             var obj = server.requestEncryptedClientChallenge(createSealedRequest(User.EMPTY));
             int serverResponse = (int) obj.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH));
@@ -80,7 +81,7 @@ public abstract class Client {
     protected static SealedObject createSealedRequest(User user) {
         return encryptionService.encryptObject(new ClientRequest(Constants.generateRandomInt(), user),
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
-                Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH);
+                Constants.CLIENT_REQUEST_SECRET_KEY_ALIAS, Constants.CLIENT_REQUEST_SECRET_KEY_PATH);
     }
     @SuppressWarnings("unchecked")
     protected static<T extends IAuthentification> Pair<T, User> connectToServer(Constants.ClientType clientType) {

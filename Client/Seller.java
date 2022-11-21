@@ -1,4 +1,8 @@
+import java.io.IOException;
 import java.rmi.RemoteException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.util.List;
 import java.util.Scanner;
 
 public final class Seller extends Client {
@@ -20,15 +24,17 @@ public final class Seller extends Client {
                             
                             1 To create an auction
                             2 To remove an auction
-                            3 To logout
+                            3 To get current bids on item
+                            4 To logout
                             """);
             answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
             switch (answer) {
                 case 1 -> createAuction(server, user);
                 case 2 -> closeAuction(server, user);
+                case 3 -> getBids(server, user);
             }
-        } while(answer != 3);
+        } while(answer != 4);
         System.exit(0);
     }
     private static void createAuction(ISeller server, User user) {
@@ -43,7 +49,7 @@ public final class Seller extends Client {
         System.out.print("What is the starting price: ");
         startingPrice = Validation.validateInteger(scanner.nextLine());
         if(reservePrice > startingPrice) {
-            System.out.println("The reserved price cannot be higher than the starting price");
+            System.out.println("\nThe reserved price cannot be higher than the starting price");
             return;
         }
         System.out.print("What is the description of the item: ");
@@ -79,11 +85,37 @@ public final class Seller extends Client {
                                 "and " + response.winner() + " won"));
             else if(!response.isAuthorized())
                 System.out.println("\nYou are not authorized to close this auction!");
+            else if(response.isClosedAlready())
+                System.out.println("You have closed this auction already");
             else
                 System.out.println("\nThere is no auction with that id");
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't close auction");
+            throw new RuntimeException(exception);
+        }
+    }
+    @SuppressWarnings("unchecked")
+    private static void getBids(ISeller server, User user) {
+        Scanner scanner = new Scanner(System.in);
+        System.out.print("Please enter the auction id: ");
+        int auctionId = Validation.validateInteger(scanner.nextLine());
+        try {
+            var response = server.getBids(auctionId, createSealedRequest(user));
+            var bids = (List<Bid>) response.getObject(encryptionService.decryptSecretKey(
+                    Constants.PASSWORD, Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH));
+            System.out.println();
+            if(bids.size() == 0)
+                System.out.println("There are no bids for this auction");
+            else
+                bids.forEach(System.out::println);
+
+        } catch (RemoteException exception) {
+            System.out.println("ERROR:\t couldn't get the bids");
+            throw new RuntimeException(exception);
+        } catch (IOException | NoSuchAlgorithmException |
+                 InvalidKeyException | ClassNotFoundException exception) {
+            System.out.println("ERROR:\t couldn't decrypt the list with bids");
             throw new RuntimeException(exception);
         }
     }

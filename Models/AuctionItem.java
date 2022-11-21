@@ -49,10 +49,6 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         highestBidName = bidderName;
     }
 
-    public int getStartingPrice() {
-        return startingPrice;
-    }
-
     public String getSellerName() {
         return Normalization.normalizeString(sellerName);
     }
@@ -90,7 +86,8 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AuctionItem item = (AuctionItem) o;
-        return  id == item.id && startingPrice == item.startingPrice &&
+        return  id == item.id &&
+                startingPrice == item.startingPrice &&
                 reservePrice == item.reservePrice &&
                 Objects.equals(itemName, item.itemName) &&
                 Objects.equals(sellerName, item.sellerName) &&

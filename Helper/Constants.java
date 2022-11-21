@@ -14,6 +14,8 @@ public final class Constants {
     public static final String LIST_SECRET_KEY_ALIAS = "ListSecretKey";
     public static final String REQUEST_SECRET_KEY_PATH = "../.sharedKeys/RequestSecretKey.ks";
     public static final String REQUEST_SECRET_KEY_ALIAS = "RequestSecretKey";
+    public static final String CLIENT_REQUEST_SECRET_KEY_PATH = "../.sharedKeys/ClientRequestSecretKey.ks";
+    public static final String CLIENT_REQUEST_SECRET_KEY_ALIAS = "ClientRequestSecretKey";
     public static final String AUTHENTICATION_SECRET_KEY_PATH = "../.sharedKeys/AuthenticationSecretKey.ks";
     public static final String AUTHENTICATION_KEY_ALIAS = "AuthenticationSecretKey";
     public static final String AUCTION_LIST_PATH = "Data/Auction-list.tmp";

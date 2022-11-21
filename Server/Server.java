@@ -39,9 +39,9 @@ public final class Server implements IBuyer, ISeller {
             Registry registry = LocateRegistry.getRegistry();
             registry.rebind(Constants.SERVER_NAME, stub);
             System.out.println("Server ready\n");
-        } catch (Exception e) {
+        } catch (RemoteException exception) {
             System.err.println("Error\t: problem while trying to launch the server");
-            e.printStackTrace();
+            throw new RuntimeException(exception);
         }
     }
     @Override
@@ -52,11 +52,11 @@ public final class Server implements IBuyer, ISeller {
         return serverChallengeNumber;
     }
     @Override
-    public boolean sendEncryptedServerChallenge(SealedObject randomNumber, SealedObject clientRequest)
+    public boolean sendEncryptedServerChallenge(SealedObject challenge, SealedObject clientRequest)
             throws RemoteException {
         try {
             readClientRequest(clientRequest);
-            int number = (int) randomNumber.getObject(
+            int number = (int) challenge.getObject(
                     (encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH)));
             if(number == serverChallengeNumber) {
@@ -73,10 +73,11 @@ public final class Server implements IBuyer, ISeller {
         }
     }
     @Override
-    public void sendClientChallenge(int randomNumber, SealedObject clientRequest) throws RemoteException {
+    public boolean sendClientChallenge(int clientChallenge, SealedObject clientRequest) throws RemoteException {
         readClientRequest(clientRequest);
-        clientChallengeNumber = randomNumber;
+        clientChallengeNumber = clientChallenge;
         System.out.println("Server received the client challenge");
+        return true;
     }
     @Override
     public SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) throws RemoteException {
@@ -107,29 +108,32 @@ public final class Server implements IBuyer, ISeller {
     }
     @Override
     public SealedObject getSpec(int auctionId, SealedObject clientRequest) throws RemoteException {
-        var item = getSpec(auctionId);
         readClientRequest(clientRequest);
+        var item = getSpec(auctionId);
+        item = !item.isOngoing() ? AuctionItem.EMPTY : item;
+        System.out.println("Sent details on auction: " + auctionId);
         return encryptionService.encryptObject(item, Constants.ENCRYPTION_ALGORITHM,
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
     }
     @Override
-    public BidResponse bidItem(BidRequest bidRequest, SealedObject clientRequest) {
+    public BidResponse bidItem(SealedObject BidRequest, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
+        var bidComparison = -1;
+        BidRequest bidRequest;
+        try {
+            bidRequest = (BidRequest) BidRequest.getObject(encryptionService.decryptSecretKey(
+                    Constants.PASSWORD, Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH));
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.out.println("ERROR:\t couldn't decrypt the key while bidding");
+            throw new RuntimeException(exception);
+        }
         var auctionId = bidRequest.auctionId();
         if(!auctionItems.containsKey(auctionId))
-            return new BidResponse(false, -1,-1);
+            return new BidResponse(false, bidComparison);
         var item = auctionItems.get(auctionId);
-
-        if(bidRequest.bid() < item.getStartingPrice())
-            return new BidResponse(true, -1,-1);
-        else if(bidRequest.bid() == item.getStartingPrice())
-            return new BidResponse(true, 0,-1);
-
-        if(bidRequest.bid() < item.getCurrentBid())
-            return new BidResponse(true, 1,-1);
-        else if(bidRequest.bid() == item.getCurrentBid())
-            return new BidResponse(true, 1,0);
+        var isLowerThanReservedPrice = bidRequest.bid() < item.getReservePrice();
 
         List<Bid> query = new ArrayList<>();
         if(bids.get(auctionId).size() == 0)
@@ -138,39 +142,45 @@ public final class Server implements IBuyer, ISeller {
             query = bids.get(auctionId).stream().filter(x ->
                     Objects.equals(x.getUsername(), user.getUsername())).collect(Collectors.toList());
 
-        //every user should have ONLY one bid on an item at a time
+        //each and every user should have ONLY one bid on an item at a time
         if (query.size() > 1)
             throw new RuntimeException("ERROR:\t too many elements in the bid hash map");
 
         var result = query.size() == 0 ? Bid.EMPTY : query.get(0);
 
-        if (result.isEmpty()) {
+        if(isLowerThanReservedPrice)
+            System.out.println("The user " + user.getId() +
+                    " hasn't reached the reserved price of " + item.getReservePrice());
+        else if (result.isEmpty()) {
             System.out.println(user.getUsername() +
-                    " made its first bid on " + item.getItemName());
-            bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), user.getUsername(), bidRequest.bid()));
+                    " made its first bid on \"" + item.getItemName() + "\"");
+            bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), item.getItemName(),
+                                            user.getUsername(), bidRequest.bid()));
             saveFile(Constants.BIDS_PATH, bids);
         }
-        else
+        else {
             System.out.println(user.getUsername() +
                     " changed its bid for \"" + item.getItemName() + "\" from " +
                     result.getBid() + " to " + bidRequest.bid());
-        bids.get(auctionId).remove(result);
-        bids.get(auctionId).add(new Bid(result.getId(), result.getUsername(), bidRequest.bid()));
-        saveFile(Constants.BIDS_PATH, bids);
-
-        item.setNewBid(user.getUsername(), bidRequest.bid());
-        if(item.getCurrentBid() >= item.getReservePrice()) {
-            System.out.println("\"" + item.getItemName() + "\" has reached the reserve price of " +
-                    item.getReservePrice() + " with a bid of " + item.getCurrentBid());
-            closeAuctionByItemId(auctionId);
+            bids.get(auctionId).remove(result);
+            bids.get(auctionId).add(new Bid(result.getId(), result.getItemName(),
+                    result.getUsername(), bidRequest.bid()));
+            saveFile(Constants.BIDS_PATH, bids);
         }
-        return new BidResponse(true, 1,1);
+
+        if(bidRequest.bid() >= item.getCurrentBid()) {
+            item.setNewBid(user.getUsername(), bidRequest.bid());
+            bidComparison = bidRequest.bid() == item.getCurrentBid() ? 0 : 1;
+            bidComparison = isLowerThanReservedPrice ? 0 : bidComparison; //just lie the buyer
+        }
+        return new BidResponse(true, bidComparison);
     }
     @Override
     public SealedObject getList(SealedObject clientRequest) throws RemoteException {
         readClientRequest(clientRequest);
         System.out.println("Sent the whole list");
-        return encryptionService.encryptObject(auctionItems.values().stream().sorted(Comparator.reverseOrder()),
+        return encryptionService.encryptObject(
+                getAllOngoingItems().stream().sorted(Comparator.reverseOrder()).toList(),
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
     }
@@ -179,10 +189,11 @@ public final class Server implements IBuyer, ISeller {
         var user = readClientRequest(clientRequest).getUser();
         if(!auctionItems.containsKey(auctionId))
             return new InfoResponse(false, false, true, false);
+        System.out.println("Sent info about the auction: " + auctionId);
         if (!getParticipantsForItem(auctionId).contains(user.getUsername()))
             return new InfoResponse(true, false, true, false);
         else if(auctionItems.get(auctionId).isOngoing())
-            return new InfoResponse(true, false, true, false);
+            return new InfoResponse(true, true, true, false);
         else if(!getWinnerForItem(auctionId).equals(user.getUsername()))
             return new InfoResponse(true, true, false, false);
         else
@@ -227,30 +238,40 @@ public final class Server implements IBuyer, ISeller {
         return new Pair<>(true, auctionId);
     }
     @Override
-    public CloseAuctionResponse closeAuction(int auctionId, SealedObject clientRequest) {
+    public CloseAuctionResponse closeAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
         if(!auctionItems.containsKey(auctionId))
-            return new CloseAuctionResponse(false, false, "N/A");
+            return new CloseAuctionResponse(false, false, true,"N/A");
         var item = auctionItems.get(auctionId);
         if(!Objects.equals(user.getUsername(), item.getSellerName()))
-            return new CloseAuctionResponse(true, false, "N/A");
+            return new CloseAuctionResponse(true, false, true,"N/A");
+        if(!item.isOngoing())
+            return new CloseAuctionResponse(true, true, true,"N/A");
         closeAuctionByItemId(auctionId);
-        System.out.println();
-        saveFile(Constants.AUCTION_LIST_PATH, auctionItems);
-        return new CloseAuctionResponse(true, true, item.getHighestBidName());
+        return new CloseAuctionResponse(true, true, false, item.getHighestBidName());
+    }
+    @Override
+    public SealedObject getBids(int auctionId, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        var list = bids.getOrDefault(auctionId, new ArrayList<>())
+                                .stream().sorted(Comparator.reverseOrder()).toList();
+        System.out.println("Sent bids for auction: " + auctionId);
+        return encryptionService.encryptObject(list,
+                Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
     }
     private void closeAuctionByItemId(int auctionId) {
-        bids.remove(auctionId);
-        saveFile(Constants.BIDS_PATH, bids);
         var item = auctionItems.remove(auctionId);
+        item.setOngoing(false);
+        auctionItems.put(auctionId, item);
+        saveFile(Constants.AUCTION_LIST_PATH, auctionItems);
         System.out.println(Constants.SERVER_NAME +
                 " closed the auction with id: " + auctionId);
-        int userId = users.stream().filter(
-                        x -> Objects.equals(x.getUsername(), item.getHighestBidName()))
-                .findFirst().orElse(User.EMPTY).getId();
+        User user = users.stream().filter(x -> Objects.equals(x.getUsername(), item.getHighestBidName()))
+                    .findFirst().orElse(User.EMPTY);
         if(item.isBid()) {
-            System.out.println("The user with the id " + userId
+            System.out.println("The user with the id " + user.getId()
                     + " won the \"" + item.getItemName() + "\" with a bid of " + item.getCurrentBid());
         }
         else
@@ -258,13 +279,14 @@ public final class Server implements IBuyer, ISeller {
     }
     private ClientRequest readClientRequest(SealedObject clientRequest) {
         var requestKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
-                Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH);
+                Constants.CLIENT_REQUEST_SECRET_KEY_ALIAS, Constants.CLIENT_REQUEST_SECRET_KEY_PATH);
         ClientRequest request;
         try {
             request = (ClientRequest) clientRequest.getObject(requestKey);
-        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException e) {
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t couldn't unlock the client request");
-            throw new RuntimeException(e);
+            throw new RuntimeException(exception);
         }
 
         System.out.println("\n--------------------------\n");
@@ -285,9 +307,9 @@ public final class Server implements IBuyer, ISeller {
         } catch (IOException exception) {
             System.out.println("ERROR:\t problem while trying to read the file");
             throw new RuntimeException(exception);
-        } catch (ClassNotFoundException e) {
+        } catch (ClassNotFoundException exception) {
             System.out.println("ERROR:\t couldn't recreate the list");
-            throw new RuntimeException(e);
+            throw new RuntimeException(exception);
         }
     }
     private void saveFile(String path, Object map) {
@@ -313,12 +335,15 @@ public final class Server implements IBuyer, ISeller {
         users.add(new User(Constants.generateRandomInt(),
                 "michael", "michael123", Constants.ClientType.Buyer));
     }
+    private List<AuctionItem> getAllOngoingItems() {
+        return auctionItems.values().stream().filter(AuctionItem::isOngoing).toList();
+    }
     private List<String> getParticipantsForItem(int auctionId) {
         var participants = new ArrayList<String>();
         bids.get(auctionId).forEach(x -> participants.add(x.getUsername()));
         return participants;
     }
-    private String getWinnerForItem(int auctionId) {
+    private String getWinnerForItem(int auctionId){
         return auctionItems.get(auctionId).getHighestBidName();
     }
 }
