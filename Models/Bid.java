@@ -54,7 +54,7 @@ public final class Bid implements Serializable, Comparable<Bid> {
     @Override
     public String toString() {
         return "------------------\n" +
-                username + " bid " + bid +
+                username + " bid " + Constants.FORMATTER.format(bid) +
                 "\n------------------";
     }
 

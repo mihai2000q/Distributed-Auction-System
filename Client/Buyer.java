@@ -15,10 +15,10 @@ public final class Buyer extends Client {
         final IBuyer server = (IBuyer) response.x();
         final User user = response.y();
         int answer;
-        Scanner scanner = new Scanner(System.in);
         do {
             System.out.println("""
-                           
+                            ------------------------------------------
+                            
                             Please type
                             
                             1 To get a specific item (need auction id)
@@ -36,12 +36,15 @@ public final class Buyer extends Client {
                 case 4 -> getInfoOnAuction(server, user);
             }
         } while(answer != 5);
+        scanner.close();
+        System.exit(0);
     }
     private static void getAuctionItem(IBuyer server, User user) {
         try {
             System.out.print("Please enter an id: ");
-            var sealedObject = server.getSpec(
-                    Validation.validateInteger(new Scanner(System.in).nextLine()), createSealedRequest(user));
+            int auctionId = Validation.validateInteger(new Scanner(System.in).nextLine());
+            if(auctionId == -1) return;
+            var sealedObject = server.getSpec(auctionId, createSealedRequest(user));
 
             var itemKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
@@ -53,7 +56,8 @@ public final class Buyer extends Client {
                 System.out.println("There's no item with the requested id");
             else
                 System.out.println(item);
-        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
             System.out.println("ERROR:\t problem while trying to get the object");
             exception.printStackTrace();
         }
@@ -62,8 +66,10 @@ public final class Buyer extends Client {
         Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the auction id: ");
         int auctionId = Validation.validateInteger(scanner.nextLine());
+        if(auctionId == -1) return;
         System.out.print("Please enter the bidding amount: ");
         int bid = Validation.validateInteger(scanner.nextLine());
+        if(bid == -1) return;
         System.out.println();
         try {
             var response = server.bidItem(
@@ -76,9 +82,9 @@ public final class Buyer extends Client {
                 System.out.println("The auction has closed");
             else if(response.isLowerThanReservedPrice())
                 System.out.println("Couldn't bid as the reserved price hasn't been reached");
-            else if(response.bidComparison() > 0)
-                System.out.println("Bid successful and you are the highest bidder now!");
             else if(response.bidComparison() < 0)
+                System.out.println("Your bid is lower than the current one");
+            else if(response.bidComparison() == 0)
                 System.out.println("You cannot lower your bid");
             else
                 System.out.println("Bid successful");
@@ -109,9 +115,9 @@ public final class Buyer extends Client {
     private static void getInfoOnAuction(IBuyer server, User user) {
         try {
             System.out.print("Please enter the auction id: ");
-            var response = server.getInfoOnAuction(
-                    Validation.validateInteger(new Scanner(System.in).nextLine()),
-                    createSealedRequest(user));
+            int auctionId = Validation.validateInteger(new Scanner(System.in).nextLine());
+            if(auctionId == -1) return;
+            var response = server.getInfoOnAuction(auctionId, createSealedRequest(user));
             System.out.println();
             if(!response.hasItem())
                 System.out.println("There's no such auction with that id");

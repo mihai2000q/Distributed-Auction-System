@@ -8,12 +8,12 @@ public final class Validation {
             return num;
         }
         catch (NumberFormatException exception) {
-            System.out.println("Please insert a number instead!!!");
-            throw new RuntimeException(exception);
+            System.out.println("\nPlease insert a number instead!!!");
+            return -1;
         }
         catch (NegativeNumberException exception) {
-            System.out.println("Please insert only positive numbers");
-            throw new RuntimeException(exception);
+            System.out.println("\nPlease insert only positive numbers");
+            return -1;
         }
     }
 }

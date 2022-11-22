@@ -29,7 +29,7 @@ public final class Server implements IBuyer, ISeller {
         activeUsers = new ArrayList<>();
         loadMapFile(Constants.AUCTION_LIST_PATH, auctionItems);
         loadMapFile(Constants.BIDS_PATH, bids);
-        initUsers();
+        loadListFile(Constants.USERS_PATH, users);
     }
     public static void main(String[] args) {
         //launching the server
@@ -68,7 +68,7 @@ public final class Server implements IBuyer, ISeller {
                 return false;
             }
         } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
-            System.out.println("ERROR:\t problem while decrypting the random number");
+            System.err.println("ERROR:\t problem while decrypting the random number");
             throw new RuntimeException(exception);
         }
     }
@@ -88,20 +88,73 @@ public final class Server implements IBuyer, ISeller {
                 Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH);
     }
     @Override
-    public boolean login(SealedObject clientRequest) throws RemoteException {
-        var user = readClientRequest(clientRequest).getUser();
-        if(!users.contains(user)) {
+    public LoginResponse login(SealedObject UserDto, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        UserDto userDto;
+        try {
+            userDto = (UserDto) UserDto.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH));
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.err.println("ERROR:\t couldn't decrypt the user dto while logging in");
+            throw new RuntimeException(exception);
+        }
+        User userToCompare = new User(Constants.generateRandomInt(), userDto.username(),
+                userDto.password(), userDto.clientType());
+        var query = users.stream().filter(
+                x -> x.getUsername().equals(Normalization.normalizeString(userDto.username()))).toList();
+        var result = query.size() > 0 ? query.get(0) : User.EMPTY;
+        if(!result.isEmpty() && !result.getClientType().equals(userDto.clientType()))
+            return new LoginResponse(User.EMPTY, false,true, false);
+        if(!users.contains(userToCompare)) {
             System.out.println("Failed login attempt");
-            return false;
+            return new LoginResponse(User.EMPTY, true,true, false);
+        }
+        User user = users.get(users.indexOf(userToCompare));
+        if(activeUsers.contains(user)) {
+            System.out.println("Failed login attempt");
+            return new LoginResponse(user, true, true, false);
         }
         activeUsers.add(user);
+        System.out.println(user.getUsername() + " logged in\n");
         System.out.println("Number of active users is " + activeUsers.size());
-        return true;
+        return new LoginResponse(user, true,false, true);
     }
     @Override
     public void logout(SealedObject clientRequest) throws RemoteException {
-        activeUsers.remove(readClientRequest(clientRequest).getUser());
+        var user = readClientRequest(clientRequest).getUser();
+        activeUsers.remove(user);
+        System.out.println(user.getUsername() + " logged out\n");
         System.out.println("Number of active users is " + activeUsers.size());
+    }
+    @Override
+    public SealedObject createAccount(SealedObject user, SealedObject clientRequest) throws RemoteException {
+        readClientRequest(clientRequest);
+        UserDto userDto;
+        try {
+            userDto = (UserDto) user.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH));
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.err.println("ERROR:\t couldn't decrypt the user while creating the account");
+            throw new RuntimeException(exception);
+        }
+        User theUser = new User(Constants.generateRandomInt(),
+                userDto.username(), userDto.password(), userDto.clientType());
+        var query = users.stream().filter(
+                x -> x.getUsername().equals(Normalization.normalizeString(userDto.username()))).toList();
+        if(query.size() > 0) {
+            System.out.println("Failed attempt to recreate the same account");
+            return encryptionService.encryptObject(User.EMPTY, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                    Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
+        }
+        users.add(theUser);
+        saveFile(Constants.USERS_PATH, users);
+        System.out.println("Successfully created another account with the username " + theUser.getUsername());
+        activeUsers.add(theUser);
+        System.out.println("\nNumber of active users is " + activeUsers.size());
+        return encryptionService.encryptObject(theUser, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
     }
     public AuctionItem getSpec(int auctionId){
         return auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
@@ -125,7 +178,7 @@ public final class Server implements IBuyer, ISeller {
                     Constants.PASSWORD, Constants.REQUEST_SECRET_KEY_ALIAS, Constants.REQUEST_SECRET_KEY_PATH));
         } catch (IOException | ClassNotFoundException |
                  NoSuchAlgorithmException | InvalidKeyException exception) {
-            System.out.println("ERROR:\t couldn't decrypt the key while bidding");
+            System.err.println("ERROR:\t couldn't decrypt the key while bidding");
             throw new RuntimeException(exception);
         }
         var auctionId = bidRequest.auctionId();
@@ -142,6 +195,10 @@ public final class Server implements IBuyer, ISeller {
             System.out.println(user.getUsername() +
                     " hasn't reached the reserved price of " + item.getReservePrice());
             return new BidResponse(true, true, true, -1);
+        }
+        if(bidRequest.bid() <= item.getCurrentBid()) {
+            System.out.println("Bid failed as it was too low!!!");
+            return new BidResponse(true, false, true, -1);
         }
 
         List<Bid> query = new ArrayList<>();
@@ -167,7 +224,7 @@ public final class Server implements IBuyer, ISeller {
         else {
             if(bidRequest.bid() <= result.getBid()) {
                 System.out.println("Failed attempt to lower bid");
-                return new BidResponse(true, false, true, -1);
+                return new BidResponse(true, false, true, 0);
             }
             System.out.println(user.getUsername() +
                     " changed its bid for \"" + item.getItemName() + "\" from " +
@@ -178,12 +235,10 @@ public final class Server implements IBuyer, ISeller {
             saveFile(Constants.BIDS_PATH, bids);
         }
 
-        if(bidRequest.bid() >= item.getCurrentBid()) {
+        if(bidRequest.bid() >= item.getCurrentBid())
             item.setNewBid(user.getUsername(), bidRequest.bid());
-            return new BidResponse(true, false, true, 1);
-        }
-        else
-            return new BidResponse(true, false, true, 0);
+        return new BidResponse(true, false, true, 1);
+
     }
     @Override
     public SealedObject getList(SealedObject clientRequest) throws RemoteException {
@@ -214,7 +269,8 @@ public final class Server implements IBuyer, ISeller {
             throws RemoteException {
         var secretKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                 Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
-        AuctionItem item;
+        final AuctionItem item;
+        AuctionItemDto itemDto;
         int itemId = Constants.generateRandomInt();
 
         //in case there is an item with the same ID already, compute another one
@@ -225,24 +281,28 @@ public final class Server implements IBuyer, ISeller {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
         try {
-            item = (AuctionItem) sealedItem.getObject(secretKey);
-            item = item.setNewId(itemId);
-        } catch (IOException | ClassNotFoundException | NoSuchAlgorithmException | InvalidKeyException exception) {
-            System.out.println("ERROR:\t couldn't unlock the sealed item");
+            itemDto = (AuctionItemDto) sealedItem.getObject(secretKey);
+        } catch (IOException | ClassNotFoundException |
+                 NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.err.println("ERROR:\t couldn't unlock the sealed item");
             throw new RuntimeException(exception);
         }
-        if(auctionItems.containsValue(item))
-            return new Pair<>(false, -1);
         //compute an auctionId
         int auctionId = Constants.generateRandomInt();
         for(Integer element : auctionItems.keySet())
             while(element == auctionId)
                 auctionId = Constants.generateRandomInt();
-        item = item.setAuctionId(auctionId);
+        item = new AuctionItem(itemId, auctionId,
+                itemDto.itemName(), itemDto.sellerName(),
+                itemDto.reservePrice(), itemDto.startingPrice(), itemDto.description());
+        if(auctionItems.containsValue(item)) {
+            System.out.println("Failed attempt to add the same item");
+            return new Pair<>(false, -1);
+        }
         auctionItems.put(auctionId,item);
         saveFile(Constants.AUCTION_LIST_PATH, auctionItems);
         System.out.println(Constants.SERVER_NAME + " received item with id: " + item.getId() + "\n");
-        System.out.println(user.getUsername() + " created auction with the id: " + auctionId + "\n");
+        System.out.println(user.getUsername() + " created auction with the id: " + auctionId);
         bids.put(auctionId, new ArrayList<>());
         saveFile(Constants.BIDS_PATH, bids);
         return new Pair<>(true, auctionId);
@@ -251,13 +311,19 @@ public final class Server implements IBuyer, ISeller {
     public CloseAuctionResponse closeAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
-        if(!auctionItems.containsKey(auctionId))
-            return new CloseAuctionResponse(false, false, true,"N/A");
+        if(!auctionItems.containsKey(auctionId)) {
+            System.out.println("Failed attempt to close auction");
+            return new CloseAuctionResponse(false, false, true, "N/A");
+        }
         var item = auctionItems.get(auctionId);
-        if(!Objects.equals(user.getUsername(), item.getSellerName()))
-            return new CloseAuctionResponse(true, false, true,"N/A");
-        if(!item.isOngoing())
-            return new CloseAuctionResponse(true, true, true,"N/A");
+        if(!Objects.equals(user.getUsername(), item.getSellerName())) {
+            System.out.println("Failed attempt to close auction");
+            return new CloseAuctionResponse(true, false, true, "N/A");
+        }
+        if(!item.isOngoing()) {
+            System.out.println("Failed attempt to close auction");
+            return new CloseAuctionResponse(true, true, true, "N/A");
+        }
         closeAuctionByItemId(auctionId);
         return new CloseAuctionResponse(true, true, false, item.getHighestBidName());
     }
@@ -265,10 +331,14 @@ public final class Server implements IBuyer, ISeller {
     public Pair<SealedObject, Integer> getBids(int auctionId, SealedObject clientRequest) throws RemoteException {
         var user = readClientRequest(clientRequest).getUser();
         var item = auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
-        if(!auctionItems.containsKey(auctionId))
-            new Pair<>(null, -1);
-        if(!user.getUsername().equals(item.getSellerName()))
-            new Pair<>(null, 0);
+        if(!auctionItems.containsKey(auctionId)) {
+            System.out.println("Failed attempt to get bids");
+            return new Pair<>(null, -1);
+        }
+        if(!user.getUsername().equals(item.getSellerName())) {
+            System.out.println("Failed attempt to get bids");
+            return new Pair<>(null, 0);
+        }
         var list = bids.getOrDefault(auctionId, new ArrayList<>())
                                 .stream().sorted(Comparator.reverseOrder()).toList();
         System.out.println("Sent bids for auction: " + auctionId);
@@ -286,6 +356,10 @@ public final class Server implements IBuyer, ISeller {
         User user = users.stream().filter(x -> Objects.equals(x.getUsername(), item.getHighestBidName()))
                     .findFirst().orElse(User.EMPTY);
         if(item.isBid()) {
+            if(user.isEmpty()) {
+                System.err.println("ERROR:\t there should be a winner if the item is bid");
+                throw new RuntimeException();
+            }
             System.out.println("The user with the id " + user.getId()
                     + " won the \"" + item.getItemName() + "\" with a bid of " + item.getCurrentBid());
         }
@@ -300,7 +374,7 @@ public final class Server implements IBuyer, ISeller {
             request = (ClientRequest) clientRequest.getObject(requestKey);
         } catch (IOException | ClassNotFoundException |
                  NoSuchAlgorithmException | InvalidKeyException exception) {
-            System.out.println("ERROR:\t couldn't unlock the client request");
+            System.err.println("ERROR:\t couldn't unlock the client request");
             throw new RuntimeException(exception);
         }
 
@@ -320,10 +394,28 @@ public final class Server implements IBuyer, ISeller {
                 map.putAll(outputList);
             objectInputStream.close();
         } catch (IOException exception) {
-            System.out.println("ERROR:\t problem while trying to read the file");
+            System.err.println("ERROR:\t problem while trying to read the file");
             throw new RuntimeException(exception);
         } catch (ClassNotFoundException exception) {
-            System.out.println("ERROR:\t couldn't recreate the list");
+            System.err.println("ERROR:\t couldn't recreate the list");
+            throw new RuntimeException(exception);
+        }
+    }
+    private <T> void loadListFile(String path, List<T> list) {
+        if(!Files.exists(Path.of(path)))
+            return;
+        try {
+            ObjectInputStream objectInputStream = new ObjectInputStream(new FileInputStream(path));
+            @SuppressWarnings("unchecked")
+            var outputList = (List<T>) objectInputStream.readObject();
+            if(outputList != null)
+                list.addAll(outputList);
+            objectInputStream.close();
+        } catch (IOException exception) {
+            System.err.println("ERROR:\t problem while trying to read the file");
+            throw new RuntimeException(exception);
+        } catch (ClassNotFoundException exception) {
+            System.err.println("ERROR:\t couldn't recreate the list");
             throw new RuntimeException(exception);
         }
     }
@@ -336,19 +428,9 @@ public final class Server implements IBuyer, ISeller {
             objectOutputStream.writeObject(map);
             objectOutputStream.close();
         } catch (IOException exception) {
-            System.out.println("ERROR:\t problem while creating the file");
+            System.err.println("ERROR:\t problem while creating the file");
             throw new RuntimeException(exception);
         }
-    }
-    private void initUsers() {
-        users.add(new User(Constants.generateRandomInt(),
-                "james", "james123", Constants.ClientType.Seller));
-        users.add(new User(Constants.generateRandomInt(),
-                "chris", "chris123", Constants.ClientType.Seller));
-        users.add(new User(Constants.generateRandomInt(),
-                "edward", "edi123", Constants.ClientType.Buyer));
-        users.add(new User(Constants.generateRandomInt(),
-                "michael", "michael123", Constants.ClientType.Buyer));
     }
     private List<AuctionItem> getAllOngoingItems() {
         return auctionItems.values().stream().filter(AuctionItem::isOngoing).toList();

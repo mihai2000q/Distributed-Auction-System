@@ -1,3 +1,4 @@
+import java.text.NumberFormat;
 import java.util.Random;
 
 public final class Constants {
@@ -18,10 +19,14 @@ public final class Constants {
     public static final String CLIENT_REQUEST_SECRET_KEY_ALIAS = "ClientRequestSecretKey";
     public static final String AUTHENTICATION_SECRET_KEY_PATH = "../.sharedKeys/AuthenticationSecretKey.ks";
     public static final String AUTHENTICATION_KEY_ALIAS = "AuthenticationSecretKey";
+    public static final String USER_SECRET_KEY_PATH = "../.sharedKeys/UserSecretKey.ks";
+    public static final String USER_SECRET_KEY_ALIAS = "UserSecretKey";
     public static final String AUCTION_LIST_PATH = "Data/Auction-list.tmp";
     public static final String BIDS_PATH = "Data/bids.tmp";
+    public static final String USERS_PATH = "Data/users.tmp";
     public static final int LIST_CAPACITY = 1000;
-    public static final int USERS_CAPACITY = 10;
+    public static final int USERS_CAPACITY = 100;
+    public static final NumberFormat FORMATTER = NumberFormat.getInstance();
     public static int generateRandomInt(){
         return new Random().nextInt((int) Math.pow(2, 10));
     }

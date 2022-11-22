@@ -16,24 +16,14 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
                                                         -1, -1, "N/A");
 
     public AuctionItem(int id, int auctionId, String itemName, String sellerName,
-                       int startingPrice, int reservePrice, String description) {
+                       int reservePrice, int startingPrice, String description) {
         this.id = id;
         this.auctionId = auctionId;
         this.itemName = itemName;
         this.sellerName = sellerName;
-        this.startingPrice = startingPrice;
         this.reservePrice = reservePrice;
+        this.startingPrice = startingPrice;
         this.description = description;
-    }
-
-    public AuctionItem setNewId(int id) {
-        return new AuctionItem(id, this.auctionId, this.itemName, this.sellerName,
-                this.startingPrice, this.reservePrice, this.description);
-    }
-
-    public AuctionItem setAuctionId(int auctionId) {
-        return new AuctionItem(id, auctionId, this.itemName, this.sellerName,
-                this.startingPrice, this.reservePrice, this.description);
     }
 
     public String getItemName() {
@@ -86,8 +76,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AuctionItem item = (AuctionItem) o;
-        return  id == item.id &&
-                startingPrice == item.startingPrice &&
+        return startingPrice == item.startingPrice &&
                 reservePrice == item.reservePrice &&
                 Objects.equals(itemName, item.itemName) &&
                 Objects.equals(sellerName, item.sellerName) &&
@@ -96,7 +85,7 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
 
     @Override
     public int hashCode() {
-        return Objects.hash(id, itemName, sellerName, startingPrice, reservePrice, description);
+        return Objects.hash(itemName, sellerName, startingPrice, reservePrice, description);
     }
 
     @Override
@@ -104,8 +93,9 @@ public final class AuctionItem implements Serializable, Comparable<AuctionItem> 
         return  "The auction id is:\t " + auctionId +
                 "\n-----------------------------\n" +
                 "Seller name = " + getSellerName() +
-                "\nItem name = " + itemName + "\nStarting Price = " + startingPrice +
-                "\nCurrent bid = " + currentBid +
+                "\nItem name = " + itemName +
+                "\nStarting Price = " + Constants.FORMATTER.format(startingPrice) +
+                "\nCurrent bid = " + Constants.FORMATTER.format(currentBid) +
                 "\nDescription = " + description +
                 "\n-----------------------------\n";
     }

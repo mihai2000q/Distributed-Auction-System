@@ -20,7 +20,7 @@ public final class ClientRequest implements Serializable {
 
     @Override
     public String toString() {
-        return "This request" + (user.isEmpty()
+        return "This request" + (user.getUsername().equals("")
                                 ? ""
                                 : " was made by " +
                                    user.getUsername() + " and it") +

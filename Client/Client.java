@@ -11,6 +11,7 @@ import java.util.*;
 
 public abstract class Client {
     protected static final IEncryptionService encryptionService = new EncryptionService();
+    protected static final Scanner scanner = new Scanner(System.in);
     public Client() {
         super();
     }
@@ -48,27 +49,76 @@ public abstract class Client {
             throw new RuntimeException(exception);
         }
         return true;
-    }   
-    private static<T extends IAuthentification> Pair<Boolean, User> login(T server, Constants.ClientType clientType) {
-        final Scanner scanner = new Scanner(System.in);
+    }
+    private static<T extends IAuthentification> Pair<User, Boolean> createAccount(T server,
+                                                                                  Constants.ClientType clientType) {
+        int answer;
+        Console console = System.console();
+        do {
+            System.out.println("\nPress 1 to login or 2 to signup\n");
+            answer = Validation.validateInteger(console.readLine());
+            System.out.println();
+        } while(answer != 1 && answer != 2);
+        if(answer == 1)
+            return new Pair<>(User.EMPTY, true);
+        System.out.print("Please enter a username: ");
+        String username = console.readLine();
+        System.out.print("and a password: ");
+        String password = new String(console.readPassword());
+        var sealedDto = encryptionService.encryptObject(new UserDto(username,password, clientType),
+                Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
+        try {
+            SealedObject obj = server.createAccount(sealedDto, createSealedRequest(User.EMPTY));
+            var user = (User) obj.getObject(encryptionService.decryptSecretKey(Constants.PASSWORD,
+                    Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH));
+            //user.isEmpty() produces strange bug for some reasons
+            if(user.getUsername().equals(User.EMPTY.getUsername())) {
+                System.out.println("\nThere is already an account with this username");
+                return new Pair<>(User.EMPTY, false);
+            }
+            else
+                return new Pair<>(user, true);
+        } catch (IOException | ClassNotFoundException |
+                NoSuchAlgorithmException | InvalidKeyException exception) {
+            System.err.println("ERROR:\t couldn't create the account");
+            throw new RuntimeException(exception);
+        }
+    }
+    private static<T extends IAuthentification> User login(T server, Constants.ClientType clientType) {
         final Console console = System.console();
         System.out.print("username: ");
         String username = Normalization.normalizeUsername(scanner.nextLine());
         System.out.print("password: ");
         String password = new String(console.readPassword());
-        var user = new User(-1, username, password, clientType);
+        var userDto = new UserDto(username, password, clientType);
+        final User user;
+        System.out.println();
         try {
-            if(server.login(createSealedRequest(user)))
-                System.out.println("\nLogged in successfully\n");
-            else {
-                System.out.println("\nUsername or Password incorrect");
-                return new Pair<>(false, User.EMPTY);
+            var response = server.login(encryptionService.encryptObject(userDto,
+                            Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                            Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH),
+                    createSealedRequest(User.EMPTY));
+            user = response.user();
+            if(!response.isAuthorized()) {
+                System.out.println("You are not authorized to log in");
+                return User.EMPTY;
             }
+            else if(response.alreadyLoggedIn()) {
+                System.out.println("You are already logged in from another browser");
+                return User.EMPTY;
+            }
+            else if(!response.success()) {
+                System.out.println("Username or Password incorrect");
+                return User.EMPTY;
+            }
+            else
+                System.out.println("Logged in successfully\n");
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't log in");
             throw new RuntimeException(exception);
         }
-        return new Pair<>(true, user);
+        return user;
     }
     private static<T extends IAuthentification> void logout(T server, User user) {
         try {
@@ -98,12 +148,19 @@ public abstract class Client {
         }
         if(!authentify(server))
             return null;
-        var response = login(server, clientType);
-        if(!response.x())
+        var response = createAccount(server, clientType);
+        if(response.x().isEmpty() && !response.y())
             return null;
-        user = response.y();
+        else if(response.x().isEmpty()) {
+            user = login(server, clientType);
+            if (user.isEmpty())
+                return null;
+        }
+        else {
+            user = response.x();
+            System.out.println("\nAccount created with success and automatically logged in!\n");
+        }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
-        System.out.println("\n----------------------\n");
         return new Pair<>(server,user);
     }
 }
