@@ -102,13 +102,19 @@ public final class Seller extends Client {
         int auctionId = Validation.validateInteger(scanner.nextLine());
         try {
             var response = server.getBids(auctionId, createSealedRequest(user));
-            var bids = (List<Bid>) response.getObject(encryptionService.decryptSecretKey(
-                    Constants.PASSWORD, Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH));
-            System.out.println();
-            if(bids.size() == 0)
-                System.out.println("There are no bids for this auction");
-            else
-                bids.forEach(System.out::println);
+            if(response.y() == -1)
+                System.out.println("There's no such auction");
+            else if (response.y() == 0)
+                System.out.println("You are not authorized to access this information");
+            else {
+                var bids = (List<Bid>) response.x().getObject(encryptionService.decryptSecretKey(
+                        Constants.PASSWORD, Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH));
+                System.out.println();
+                if (bids.size() == 0)
+                    System.out.println("There are no bids for this auction");
+                else
+                    bids.forEach(System.out::println);
+            }
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't get the bids");

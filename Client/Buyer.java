@@ -72,12 +72,16 @@ public final class Buyer extends Client {
                     createSealedRequest(user));
             if(!response.hasItem())
                 System.out.println("There is no auction with that id");
-            else if(response.bidComparison() == 0)
-                System.out.println("Bid successful");
-            else if(response.bidComparison() < 0)
-                System.out.println("Bid successfully lowered");
-            else
+            else if(!response.ongoing())
+                System.out.println("The auction has closed");
+            else if(response.isLowerThanReservedPrice())
+                System.out.println("Couldn't bid as the reserved price hasn't been reached");
+            else if(response.bidComparison() > 0)
                 System.out.println("Bid successful and you are the highest bidder now!");
+            else if(response.bidComparison() < 0)
+                System.out.println("You cannot lower your bid");
+            else
+                System.out.println("Bid successful");
 
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't bid the item");

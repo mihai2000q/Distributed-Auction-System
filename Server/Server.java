@@ -119,7 +119,6 @@ public final class Server implements IBuyer, ISeller {
     public BidResponse bidItem(SealedObject BidRequest, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
-        var bidComparison = -1;
         BidRequest bidRequest;
         try {
             bidRequest = (BidRequest) BidRequest.getObject(encryptionService.decryptSecretKey(
@@ -130,10 +129,20 @@ public final class Server implements IBuyer, ISeller {
             throw new RuntimeException(exception);
         }
         var auctionId = bidRequest.auctionId();
-        if(!auctionItems.containsKey(auctionId))
-            return new BidResponse(false, bidComparison);
+        if(!auctionItems.containsKey(auctionId)) {
+            System.out.println("Failed attempt to bid");
+            return new BidResponse(false, true, false, -1);
+        }
         var item = auctionItems.get(auctionId);
-        var isLowerThanReservedPrice = bidRequest.bid() < item.getReservePrice();
+        if(!item.isOngoing()) {
+            System.out.println("Failed attempt to bid on auction that has closed");
+            return new BidResponse(true, true, false, -1);
+        }
+        if(bidRequest.bid() < item.getReservePrice()) {
+            System.out.println(user.getUsername() +
+                    " hasn't reached the reserved price of " + item.getReservePrice());
+            return new BidResponse(true, true, true, -1);
+        }
 
         List<Bid> query = new ArrayList<>();
         if(bids.get(auctionId).size() == 0)
@@ -148,10 +157,7 @@ public final class Server implements IBuyer, ISeller {
 
         var result = query.size() == 0 ? Bid.EMPTY : query.get(0);
 
-        if(isLowerThanReservedPrice)
-            System.out.println("The user " + user.getId() +
-                    " hasn't reached the reserved price of " + item.getReservePrice());
-        else if (result.isEmpty()) {
+        if (result.isEmpty()) {
             System.out.println(user.getUsername() +
                     " made its first bid on \"" + item.getItemName() + "\"");
             bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), item.getItemName(),
@@ -159,6 +165,10 @@ public final class Server implements IBuyer, ISeller {
             saveFile(Constants.BIDS_PATH, bids);
         }
         else {
+            if(bidRequest.bid() <= result.getBid()) {
+                System.out.println("Failed attempt to lower bid");
+                return new BidResponse(true, false, true, -1);
+            }
             System.out.println(user.getUsername() +
                     " changed its bid for \"" + item.getItemName() + "\" from " +
                     result.getBid() + " to " + bidRequest.bid());
@@ -170,10 +180,10 @@ public final class Server implements IBuyer, ISeller {
 
         if(bidRequest.bid() >= item.getCurrentBid()) {
             item.setNewBid(user.getUsername(), bidRequest.bid());
-            bidComparison = bidRequest.bid() == item.getCurrentBid() ? 0 : 1;
-            bidComparison = isLowerThanReservedPrice ? 0 : bidComparison; //just lie the buyer
+            return new BidResponse(true, false, true, 1);
         }
-        return new BidResponse(true, bidComparison);
+        else
+            return new BidResponse(true, false, true, 0);
     }
     @Override
     public SealedObject getList(SealedObject clientRequest) throws RemoteException {
@@ -252,14 +262,19 @@ public final class Server implements IBuyer, ISeller {
         return new CloseAuctionResponse(true, true, false, item.getHighestBidName());
     }
     @Override
-    public SealedObject getBids(int auctionId, SealedObject clientRequest) throws RemoteException {
-        readClientRequest(clientRequest);
+    public Pair<SealedObject, Integer> getBids(int auctionId, SealedObject clientRequest) throws RemoteException {
+        var user = readClientRequest(clientRequest).getUser();
+        var item = auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
+        if(!auctionItems.containsKey(auctionId))
+            new Pair<>(null, -1);
+        if(!user.getUsername().equals(item.getSellerName()))
+            new Pair<>(null, 0);
         var list = bids.getOrDefault(auctionId, new ArrayList<>())
                                 .stream().sorted(Comparator.reverseOrder()).toList();
         System.out.println("Sent bids for auction: " + auctionId);
-        return encryptionService.encryptObject(list,
+        return new Pair<>(encryptionService.encryptObject(list,
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
-                Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
+                Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH), 1);
     }
     private void closeAuctionByItemId(int auctionId) {
         var item = auctionItems.remove(auctionId);
