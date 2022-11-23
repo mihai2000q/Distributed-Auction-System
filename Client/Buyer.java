@@ -42,7 +42,7 @@ public final class Buyer extends Client {
     private static void getAuctionItem(IBuyer server, User user) {
         try {
             System.out.print("Please enter an id: ");
-            int auctionId = Validation.validateInteger(new Scanner(System.in).nextLine());
+            int auctionId = Validation.validateInteger(scanner.nextLine());
             if(auctionId == -1) return;
             var sealedObject = server.getSpec(auctionId, createSealedRequest(user));
 
@@ -63,7 +63,6 @@ public final class Buyer extends Client {
         }
     }
     private static void bidItem(IBuyer server, User user) {
-        Scanner scanner = new Scanner(System.in);
         System.out.print("Please enter the auction id: ");
         int auctionId = Validation.validateInteger(scanner.nextLine());
         if(auctionId == -1) return;
@@ -115,7 +114,7 @@ public final class Buyer extends Client {
     private static void getInfoOnAuction(IBuyer server, User user) {
         try {
             System.out.print("Please enter the auction id: ");
-            int auctionId = Validation.validateInteger(new Scanner(System.in).nextLine());
+            int auctionId = Validation.validateInteger(scanner.nextLine());
             if(auctionId == -1) return;
             var response = server.getInfoOnAuction(auctionId, createSealedRequest(user));
             System.out.println();
