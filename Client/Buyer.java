@@ -83,7 +83,7 @@ public final class Buyer extends Client {
             else if(response.isLowerThanReservedPrice())
                 System.out.println("Couldn't bid as the reserved price hasn't been reached");
             else if(response.bidComparison() < 0)
-                System.out.println("Your bid is lower than the current one");
+                System.out.println("You cannot make a bid that is lower than the current one");
             else if(response.bidComparison() == 0)
                 System.out.println("You cannot lower your bid");
             else
