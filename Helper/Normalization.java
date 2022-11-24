@@ -1,3 +1,5 @@
+import java.text.DecimalFormat;
+
 public final class Normalization {
     private Normalization() {}
     public static String normalizeString(String str) {

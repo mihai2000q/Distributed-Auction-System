@@ -17,6 +17,7 @@ public final class Buyer extends Client {
         int answer;
         do {
             System.out.println("""
+                            
                             ------------------------------------------
                             
                             Please type
@@ -44,16 +45,16 @@ public final class Buyer extends Client {
             System.out.print("Please enter an id: ");
             int auctionId = Validation.validateInteger(scanner.nextLine());
             if(auctionId == -1) return;
-            var sealedObject = server.getSpec(auctionId, createSealedRequest(user));
+            System.out.println();
+            var response = server.getSpec(auctionId, createSealedRequest(user));
 
             var itemKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
-
-            var item = (AuctionItem) sealedObject.getObject(itemKey);
-
-            System.out.println();
-            if(item.isEmpty())
+            var item = (AuctionItem) response.sealedItem().getObject(itemKey);
+            if(!response.hasItem())
                 System.out.println("There's no item with the requested id");
+            else if(!response.ongoing())
+                System.out.println("The item is not ongoing anymore");
             else
                 System.out.println(item);
         } catch (IOException | ClassNotFoundException |

@@ -104,16 +104,17 @@ public abstract class Client {
                 System.out.println("You are not authorized to log in");
                 return User.EMPTY;
             }
+            else
+            if(!response.success()) {
+                System.out.println("Username or Password incorrect");
+                return User.EMPTY;
+            }
             else if(response.alreadyLoggedIn()) {
                 System.out.println("You are already logged in from another browser");
                 return User.EMPTY;
             }
-            else if(!response.success()) {
-                System.out.println("Username or Password incorrect");
-                return User.EMPTY;
-            }
             else
-                System.out.println("Logged in successfully\n");
+                System.out.println("Logged in successfully");
         } catch (RemoteException exception) {
             System.out.println("ERROR:\t couldn't log in");
             throw new RuntimeException(exception);
@@ -158,7 +159,7 @@ public abstract class Client {
         }
         else {
             user = response.x();
-            System.out.println("\nAccount created with success and automatically logged in!\n");
+            System.out.println("\nAccount created with success and automatically logged in!");
         }
         Runtime.getRuntime().addShutdownHook(new Thread(() -> logout(server, user)));
         return new Pair<>(server,user);

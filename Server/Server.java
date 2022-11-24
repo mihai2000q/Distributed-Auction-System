@@ -139,6 +139,11 @@ public final class Server implements IBuyer, ISeller {
             System.err.println("ERROR:\t couldn't decrypt the user while creating the account");
             throw new RuntimeException(exception);
         }
+        if(userDto.username().equals(User.EMPTY.getUsername())) {
+            System.out.println("Failed attempt to create account");
+            return encryptionService.encryptObject(User.EMPTY, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
+                    Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
+        }
         User theUser = new User(Constants.generateRandomInt(),
                 userDto.username(), userDto.password(), userDto.clientType());
         var query = users.stream().filter(
@@ -160,13 +165,21 @@ public final class Server implements IBuyer, ISeller {
         return auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
     }
     @Override
-    public SealedObject getSpec(int auctionId, SealedObject clientRequest) throws RemoteException {
+    public GetResponse getSpec(int auctionId, SealedObject clientRequest) throws RemoteException {
         readClientRequest(clientRequest);
         var item = getSpec(auctionId);
-        item = !item.isOngoing() ? AuctionItem.EMPTY : item;
+        if(item.isEmpty())
+            return new GetResponse(false, false,
+                    encryptionService.encryptObject(AuctionItem.EMPTY, Constants.ENCRYPTION_ALGORITHM,
+                            Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH));
+        if(!item.isOngoing())
+            return new GetResponse(true, false,
+                    encryptionService.encryptObject(AuctionItem.EMPTY, Constants.ENCRYPTION_ALGORITHM,
+                    Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH));
         System.out.println("Sent details on auction: " + auctionId);
-        return encryptionService.encryptObject(item, Constants.ENCRYPTION_ALGORITHM,
+        var sealedObject = encryptionService.encryptObject(item, Constants.ENCRYPTION_ALGORITHM,
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
+        return new GetResponse(true, true, sealedObject);
     }
     @Override
     public BidResponse bidItem(SealedObject BidRequest, SealedObject clientRequest) {
@@ -193,7 +206,7 @@ public final class Server implements IBuyer, ISeller {
         }
         if(bidRequest.bid() < item.getReservePrice()) {
             System.out.println(user.getUsername() +
-                    " hasn't reached the reserved price of " + item.getReservePrice());
+                    " hasn't reached the reserved price of " + Constants.FORMATTER.format(item.getReservePrice()));
             return new BidResponse(true, true, true, -1);
         }
         if(bidRequest.bid() <= item.getCurrentBid()) {
@@ -228,7 +241,8 @@ public final class Server implements IBuyer, ISeller {
             }
             System.out.println(user.getUsername() +
                     " changed its bid for \"" + item.getItemName() + "\" from " +
-                    result.getBid() + " to " + bidRequest.bid());
+                    Constants.FORMATTER.format(result.getBid()) + " to " +
+                    Constants.FORMATTER.format(bidRequest.bid()));
             bids.get(auctionId).remove(result);
             bids.get(auctionId).add(new Bid(result.getId(), result.getItemName(),
                     result.getUsername(), bidRequest.bid()));
@@ -361,7 +375,8 @@ public final class Server implements IBuyer, ISeller {
                 throw new RuntimeException();
             }
             System.out.println("The user with the id " + user.getId()
-                    + " won the \"" + item.getItemName() + "\" with a bid of " + item.getCurrentBid());
+                    + " won the \"" + item.getItemName() + "\" with a bid of " +
+                    Constants.FORMATTER.format(item.getCurrentBid()));
         }
         else
             System.out.println("Nobody bid for the \"" + item.getItemName() + "\"");

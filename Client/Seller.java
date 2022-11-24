@@ -17,6 +17,7 @@ public final class Seller extends Client {
         int answer;
         do {
             System.out.println("""
+                           
                            ------------------------------------------
                            
                            Please type
@@ -56,7 +57,7 @@ public final class Seller extends Client {
         System.out.print("What is the description of the item: ");
         String description = Normalization.normalizeString(scanner.nextLine());
         AuctionItemDto auctionItemDto = new AuctionItemDto(itemName, user.getUsername(),
-                startingPrice, reservePrice, description);
+                reservePrice, startingPrice, description);
 
         var sealedItem = encryptionService.encryptObject(auctionItemDto, Constants.ENCRYPTION_ALGORITHM,
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);

@@ -1,4 +1,5 @@
 import java.text.NumberFormat;
+import java.util.Locale;
 import java.util.Random;
 
 public final class Constants {
@@ -26,7 +27,7 @@ public final class Constants {
     public static final String USERS_PATH = "Data/users.tmp";
     public static final int LIST_CAPACITY = 1000;
     public static final int USERS_CAPACITY = 100;
-    public static final NumberFormat FORMATTER = NumberFormat.getInstance();
+    public static final NumberFormat FORMATTER = NumberFormat.getCurrencyInstance();
     public static int generateRandomInt(){
         return new Random().nextInt((int) Math.pow(2, 10));
     }
