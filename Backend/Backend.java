@@ -1,18 +1,17 @@
+import org.jgroups.JChannel;
+import org.jgroups.blocks.RpcDispatcher;
+
 import javax.crypto.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.rmi.Remote;
 import java.rmi.RemoteException;
-import java.rmi.registry.LocateRegistry;
-import java.rmi.registry.Registry;
-import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
 import java.util.stream.Collectors;
 
-public final class Server implements IBuyer, ISeller {
+public final class Backend {
     private int serverChallengeNumber;
     private int clientChallengeNumber;
     private final Map<Integer, AuctionItem> auctionItems;
@@ -20,7 +19,11 @@ public final class Server implements IBuyer, ISeller {
     private final List<User> users;
     private final Collection<User> activeUsers;
     private final IEncryptionService encryptionService;
-    public Server() {
+    private final IGroupService groupService;
+    private final JChannel channel;
+    private final RpcDispatcher dispatcher;
+    private int requestCount;
+    public Backend() {
         super();
         encryptionService = new EncryptionService();
         auctionItems = new HashMap<>(Constants.LIST_CAPACITY);
@@ -30,30 +33,28 @@ public final class Server implements IBuyer, ISeller {
         loadMapFile(Constants.AUCTION_LIST_PATH, auctionItems);
         loadMapFile(Constants.BIDS_PATH, bids);
         loadListFile(Constants.USERS_PATH, users);
+
+        this.requestCount = 0;
+        groupService = new GroupService();
+        channel = groupService.connect();
+        if(channel == null)
+            System.exit(1);
+
+        dispatcher = new RpcDispatcher(channel, this);
     }
     public static void main(String[] args) {
         //launching the server
-        try {
-            Server server = new Server();
-            Remote stub = UnicastRemoteObject.exportObject(server, Constants.SERVER_PORT);
-            Registry registry = LocateRegistry.getRegistry();
-            registry.rebind(Constants.SERVER_NAME, stub);
-            System.out.println("Server ready\n");
-        } catch (RemoteException exception) {
-            System.err.println("Error\t: problem while trying to launch the server");
-            throw new RuntimeException(exception);
-        }
+        new Backend();
     }
-    @Override
-    public int requestServerChallenge(SealedObject clientRequest) throws RemoteException {
+    
+    public int requestServerChallenge(SealedObject clientRequest) {
         readClientRequest(clientRequest);
         serverChallengeNumber = Constants.generateRandomInt();
         System.out.println("Server sent authentication challenge for client");
         return serverChallengeNumber;
     }
-    @Override
-    public boolean sendEncryptedServerChallenge(SealedObject challenge, SealedObject clientRequest)
-            throws RemoteException {
+
+    public boolean sendEncryptedServerChallenge(SealedObject challenge, SealedObject clientRequest) {
         try {
             readClientRequest(clientRequest);
             int number = (int) challenge.getObject(
@@ -72,23 +73,23 @@ public final class Server implements IBuyer, ISeller {
             throw new RuntimeException(exception);
         }
     }
-    @Override
-    public boolean sendClientChallenge(int clientChallenge, SealedObject clientRequest) throws RemoteException {
+
+    public boolean sendClientChallenge(int clientChallenge, SealedObject clientRequest) {
         readClientRequest(clientRequest);
         clientChallengeNumber = clientChallenge;
         System.out.println("Server received the client challenge");
         return true;
     }
-    @Override
-    public SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) throws RemoteException {
+
+    public SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) {
         readClientRequest(clientRequest);
         System.out.println("Server got authenticated by client");
         return encryptionService.encryptObject(clientChallengeNumber,
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH);
     }
-    @Override
-    public LoginResponse login(SealedObject UserDto, SealedObject clientRequest) throws RemoteException {
+
+    public LoginResponse login(SealedObject UserDto, SealedObject clientRequest) {
         readClientRequest(clientRequest);
         UserDto userDto;
         try {
@@ -120,15 +121,16 @@ public final class Server implements IBuyer, ISeller {
         System.out.println("Number of active users is " + activeUsers.size());
         return new LoginResponse(user, true,false, true);
     }
-    @Override
-    public void logout(SealedObject clientRequest) throws RemoteException {
+
+    public boolean logout(SealedObject clientRequest) {
         var user = readClientRequest(clientRequest).getUser();
         activeUsers.remove(user);
         System.out.println(user.getUsername() + " logged out\n");
         System.out.println("Number of active users is " + activeUsers.size());
+        return true;
     }
-    @Override
-    public SealedObject createAccount(SealedObject user, SealedObject clientRequest) throws RemoteException {
+
+    public SealedObject createAccount(SealedObject user, SealedObject clientRequest) {
         readClientRequest(clientRequest);
         UserDto userDto;
         try {
@@ -161,13 +163,10 @@ public final class Server implements IBuyer, ISeller {
         return encryptionService.encryptObject(theUser, Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
     }
-    public AuctionItem getSpec(int auctionId){
-        return auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
-    }
-    @Override
-    public GetResponse getSpec(int auctionId, SealedObject clientRequest) throws RemoteException {
+
+    public GetResponse getSpecByItemId(int auctionId, SealedObject clientRequest) {
         readClientRequest(clientRequest);
-        var item = getSpec(auctionId);
+        var item = getSpecByItemId(auctionId);
         if(item.isEmpty())
             return new GetResponse(false, false,
                     encryptionService.encryptObject(AuctionItem.EMPTY, Constants.ENCRYPTION_ALGORITHM,
@@ -181,7 +180,7 @@ public final class Server implements IBuyer, ISeller {
                 Constants.PASSWORD, Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
         return new GetResponse(true, true, sealedObject);
     }
-    @Override
+
     public BidResponse bidItem(SealedObject BidRequest, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
@@ -254,8 +253,8 @@ public final class Server implements IBuyer, ISeller {
         return new BidResponse(true, false, true, 1);
 
     }
-    @Override
-    public SealedObject getList(SealedObject clientRequest) throws RemoteException {
+
+    public SealedObject getList(SealedObject clientRequest) {
         readClientRequest(clientRequest);
         System.out.println("Sent the whole list");
         return encryptionService.encryptObject(
@@ -263,8 +262,8 @@ public final class Server implements IBuyer, ISeller {
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH);
     }
-    @Override
-    public InfoResponse getInfoOnAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
+
+    public InfoResponse getInfoOnAuction(int auctionId, SealedObject clientRequest) {
         var user = readClientRequest(clientRequest).getUser();
         if(!auctionItems.containsKey(auctionId))
             return new InfoResponse(false, false, true, false);
@@ -278,9 +277,9 @@ public final class Server implements IBuyer, ISeller {
         else
             return new InfoResponse(true, true, false, true);
     }
-    @Override
+
     public Pair<Boolean, Integer> createAuction(SealedObject sealedItem, SealedObject clientRequest)
-            throws RemoteException {
+            {
         var secretKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
                 Constants.ITEM_SECRET_KEY_ALIAS, Constants.ITEM_SECRET_KEY_PATH);
         final AuctionItem item;
@@ -321,8 +320,8 @@ public final class Server implements IBuyer, ISeller {
         saveFile(Constants.BIDS_PATH, bids);
         return new Pair<>(true, auctionId);
     }
-    @Override
-    public CloseAuctionResponse closeAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
+
+    public CloseAuctionResponse closeAuction(int auctionId, SealedObject clientRequest) {
         var request = readClientRequest(clientRequest);
         var user = request.getUser();
         if(!auctionItems.containsKey(auctionId)) {
@@ -341,8 +340,8 @@ public final class Server implements IBuyer, ISeller {
         closeAuctionByItemId(auctionId);
         return new CloseAuctionResponse(true, true, false, item.getHighestBidName());
     }
-    @Override
-    public Pair<SealedObject, Integer> getBids(int auctionId, SealedObject clientRequest) throws RemoteException {
+
+    public Pair<SealedObject, Integer> getBids(int auctionId, SealedObject clientRequest) {
         var user = readClientRequest(clientRequest).getUser();
         var item = auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
         if(!auctionItems.containsKey(auctionId)) {
@@ -359,6 +358,9 @@ public final class Server implements IBuyer, ISeller {
         return new Pair<>(encryptionService.encryptObject(list,
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.LIST_SECRET_KEY_ALIAS, Constants.LIST_SECRET_KEY_PATH), 1);
+    }
+    private AuctionItem getSpecByItemId(int auctionId){
+        return auctionItems.getOrDefault(auctionId, AuctionItem.EMPTY);
     }
     private void closeAuctionByItemId(int auctionId) {
         var item = auctionItems.remove(auctionId);

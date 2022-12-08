@@ -139,7 +139,7 @@ public abstract class Client {
         final User user;
         final T server;
         try {
-            Registry registry = LocateRegistry.getRegistry(Constants.SERVER_HOST);
+            Registry registry = LocateRegistry.getRegistry();
             server = (T) registry.lookup(Constants.SERVER_NAME);
         }
         catch (RemoteException | NotBoundException exception) {

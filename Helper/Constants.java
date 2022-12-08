@@ -5,9 +5,8 @@ import java.util.Random;
 public final class Constants {
     private Constants() {}
     public enum ClientType {Seller, Buyer}
+    public static final int REGISTRY_PORT = 1099;
     public static final String SERVER_NAME = "Auction Server";
-    public static final String SERVER_HOST = "localhost";
-    public static final short SERVER_PORT = 0;
     public static final String PASSWORD = "admin";
     public static final String ENCRYPTION_ALGORITHM = "AES";
     public static final String ITEM_SECRET_KEY_PATH = "../.sharedKeys/ItemSecretKey.ks";
@@ -28,6 +27,7 @@ public final class Constants {
     public static final int LIST_CAPACITY = 1000;
     public static final int USERS_CAPACITY = 100;
     public static final NumberFormat FORMATTER = NumberFormat.getCurrencyInstance();
+    public static final int DISPATCHER_TIMEOUT = 1000;
     public static int generateRandomInt(){
         return new Random().nextInt((int) Math.pow(2, 10));
     }
