@@ -1,15 +1,22 @@
-ARG JAVA_VERSION=11
-FROM openjdk:${JAVA_VERSION}-jdk as builder
+ARG JGROUPS_VERSION=3.6.20
+FROM eclipse-temurin:17-jdk-jammy
+FROM ghcr.io/scc311/jgroups:${JGROUPS_VERSION} as builder
 
-WORKDIR /src/client
-COPY client ./client
-COPY api ./api
+WORKDIR /src/frontend
+COPY frontend ./frontend
+
+COPY dtos ./dtos
+COPY helper ./helper
+COPY models ./models
+COPY requests ./requests
+COPY responses ./responses
+COPY services ./services
 
 RUN javac -Xlint ./*/*.java
 
-FROM openjdk:${JAVA_VERSION}-jre
+FROM ghcr.io/scc311/jgroups:jre-${JGROUPS_VERSION}
 
-WORKDIR /app/client
-COPY --from=builder /src/client .
+WORKDIR /app/frontend
+COPY --from=builder /src/frontend .
 
-ENTRYPOINT ["java", "client.Client"]
+ENTRYPOINT ["java", "-Djava.net.preferIPv4Stack=true", "frontend.Frontend"]
