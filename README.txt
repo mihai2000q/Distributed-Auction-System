@@ -8,3 +8,7 @@ and use "java Seller.java" or "java Buyer.java"
 to run either a seller or a buyer
 
 From there on follow the screen instructions and have fun!
+
+java -cp jgroups-3.6.20.Final.jar;. Frontend.java
+java -cp jgroups-3.6.20.Final.jar;. Backend.java
+java -cp jgroups-3.6.20.Final.jar;. Seller.java

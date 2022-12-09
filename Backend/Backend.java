@@ -5,7 +5,6 @@ import javax.crypto.*;
 import java.io.*;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.rmi.RemoteException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
@@ -19,7 +18,7 @@ public final class Backend {
     private final List<User> users;
     private final Collection<User> activeUsers;
     private final IEncryptionService encryptionService;
-    private final IGroupService groupService;
+    private final IGroupUtils groupUtils;
     private final JChannel channel;
     private final RpcDispatcher dispatcher;
     private int requestCount;
@@ -35,8 +34,8 @@ public final class Backend {
         loadListFile(Constants.USERS_PATH, users);
 
         this.requestCount = 0;
-        groupService = new GroupService();
-        channel = groupService.connect();
+        groupUtils = new GroupUtils();
+        channel = groupUtils.connect();
         if(channel == null)
             System.exit(1);
 

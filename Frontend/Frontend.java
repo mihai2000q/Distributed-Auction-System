@@ -9,20 +9,21 @@ import java.io.IOException;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
+import java.rmi.server.UnicastRemoteObject;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
 
-public final class Frontend implements IBuyer, ISeller {
+public final class Frontend extends UnicastRemoteObject implements IBuyer, ISeller {
     private final IEncryptionService encryptionService;
-    private final IGroupService groupService;
+    private final IGroupUtils groupUtils;
     private final JChannel channel;
     private final RpcDispatcher dispatcher;
-    public Frontend() {
+    public Frontend() throws RemoteException {
         super();
         encryptionService = new EncryptionService();
-        groupService = new GroupService();
-        channel = groupService.connect();
+        groupUtils = new GroupUtils();
+        channel = groupUtils.connect();
         if (this.channel == null)
             System.exit(1); // error to be printed by the 'connect' function
         this.bind();
@@ -33,7 +34,12 @@ public final class Frontend implements IBuyer, ISeller {
     }
     public static void main(String[] args) {
         //launching the server
-        new Frontend();
+        try {
+            new Frontend();
+        } catch (RemoteException exception) {
+            System.err.println("ERROR:\t problem while launching the frontend server");
+            throw new RuntimeException(exception);
+        }
     }
     private void bind() {
         try {

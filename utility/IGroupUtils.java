@@ -1,5 +1,5 @@
 import org.jgroups.JChannel;
 
-public interface IGroupService {
+public interface IGroupUtils {
     JChannel connect();
 }
