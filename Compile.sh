@@ -14,7 +14,7 @@ done
 cd out
 javac -cp $jarFile *.java
 
-#start java -cp $jarFile;. Frontend.java
+start java -cp jgroups-3.6.20.Final.jar:. Frontend.java
 
 exit
 
