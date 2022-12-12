@@ -1,14 +1,18 @@
-Execute the "Run.sh" file 
-(it will create a folder and run the rmiregistry and the server)
+Execute the "Compile.sh" file
+(it will create a folder with all the compiled files)
 
+then execute Run.bat
+It will open the frontend server, 3 backend replicas and 1 seller + 1 buyer
+
+If you want to open more
 go to the newly created folder "out"
 
 then open the console (cmd)
-and use "java Seller.java" or "java Buyer.java"
-to run either a seller or a buyer
-
-From there on follow the screen instructions and have fun!
+and run either of these commands
 
 java -cp jgroups-3.6.20.Final.jar;. Frontend.java
 java -cp jgroups-3.6.20.Final.jar;. Backend.java
 java -cp jgroups-3.6.20.Final.jar;. Seller.java
+java -cp jgroups-3.6.20.Final.jar;. Buyer.java
+
+Notice: replace ; with : on linux/macOS
