@@ -10,9 +10,9 @@ go to the newly created folder "out"
 then open the console (cmd)
 and run either of these commands
 
-java -cp jgroups-3.6.20.Final.jar;. Frontend.java
-java -cp jgroups-3.6.20.Final.jar;. Backend.java
-java -cp jgroups-3.6.20.Final.jar;. Seller.java
-java -cp jgroups-3.6.20.Final.jar;. Buyer.java
+java -cp jgroups-3.6.20.Final.jar;. -Djava.net.preferIPv4Stack=true Frontend.java
+java -cp jgroups-3.6.20.Final.jar;. -Djava.net.preferIPv4Stack=true Backend.java
+java -cp jgroups-3.6.20.Final.jar;. -Djava.net.preferIPv4Stack=true Seller.java
+java -cp jgroups-3.6.20.Final.jar;. -Djava.net.preferIPv4Stack=true Buyer.java
 
 Notice: replace ; with : on linux/macOS

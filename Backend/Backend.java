@@ -163,7 +163,7 @@ public final class Backend {
                 Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
     }
 
-    public GetResponse getSpecByItemId(int auctionId, SealedObject clientRequest) {
+    public GetResponse getSpec(int auctionId, SealedObject clientRequest) {
         readClientRequest(clientRequest);
         var item = getSpecByItemId(auctionId);
         if(item.isEmpty())

@@ -7,6 +7,8 @@ public final class Constants {
     public enum ClientType {Seller, Buyer}
     public static final int REGISTRY_PORT = 1099;
     public static final String SERVER_NAME = "Auction Server";
+    public static final String CHANNEL_GROUP = "GROUP";
+    public static final String CHANNEL_DEFAULT_GROUP = "DEFAULT_GROUP";
     public static final String PASSWORD = "admin";
     public static final String ENCRYPTION_ALGORITHM = "AES";
     public static final String ITEM_SECRET_KEY_PATH = "../.sharedKeys/ItemSecretKey.ks";

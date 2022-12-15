@@ -115,7 +115,7 @@ public final class Frontend extends UnicastRemoteObject implements IBuyer, ISell
     @Override
     public InfoResponse getInfoOnAuction(int auctionId, SealedObject clientRequest) throws RemoteException {
         return readRspResponses(clientRequest, "getInfoOnAuction",
-                new Object[] { auctionId, clientRequest }, new Class[] { SealedObject.class });
+                new Object[] { auctionId, clientRequest }, new Class[] { int.class, SealedObject.class });
     }
 
     @Override
@@ -136,21 +136,21 @@ public final class Frontend extends UnicastRemoteObject implements IBuyer, ISell
                 new Object[] { auctionId, clientRequest }, new Class[] { int.class, SealedObject.class });
     }
     private<T> T readRspResponses(SealedObject clientRequest, String methodName,
-                                  Object[] args, Class[] classes) {
+                                  Object[] args, Class[] types) {
         readClientRequest(clientRequest);
         RspList<T> responses;
         try {
-            responses = dispatcher.callRemoteMethods(null, methodName, args, classes,
+            responses = dispatcher.callRemoteMethods(null, methodName, args, types,
                     new RequestOptions(ResponseMode.GET_ALL, Constants.DISPATCHER_TIMEOUT));
             System.out.println("Frontend server received " + responses.size() + " responses");
         } catch (Exception exception) {
-            System.out.println("ERROR:\t while calling remote method requestServerChallenge");
+            System.err.println("ERROR:\t while calling remote methods");
             throw new RuntimeException(exception);
         }
         if(!responses.isEmpty() && checkIntegrity(responses))
             return responses.getFirst();
         else {
-            System.out.println("ERROR:\t responses either wrong or they are not existent");
+            System.err.println("ERROR:\t responses either wrong or they are not existent");
             throw new RuntimeException();
         }
     }

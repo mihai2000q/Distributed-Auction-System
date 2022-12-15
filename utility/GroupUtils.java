@@ -2,7 +2,9 @@ import org.jgroups.JChannel;
 
 public class GroupUtils implements IGroupUtils {
     public JChannel connect() {
-        String channelName = System.getenv("GROUP") == null ? "DEFAULT_GROUP" : System.getenv("GROUP");
+        String channelName = System.getenv(Constants.CHANNEL_GROUP) == null
+                ? Constants.CHANNEL_DEFAULT_GROUP
+                : System.getenv(Constants.CHANNEL_GROUP);
         try {
             JChannel channel = new JChannel();
             channel.connect(channelName);
