@@ -10,12 +10,14 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public abstract class Client {
-    protected static final IEncryptionService encryptionService = new EncryptionService();
-    protected static final Scanner scanner = new Scanner(System.in);
+    protected final IEncryptionService encryptionService = new EncryptionService();
+    protected final Scanner scanner = new Scanner(System.in);
     public Client() {
         super();
+        init();
     }
-    private static<T extends IAuthentication> boolean authentify(T server) {
+    protected abstract void init();
+    private <T extends IAuthentication> boolean authentify(T server) {
         try {
             final var serverChallenge = server.requestServerChallenge(createSealedRequest(User.EMPTY));
             var check = server.sendEncryptedServerChallenge(encryptionService.encryptObject(
@@ -50,7 +52,7 @@ public abstract class Client {
         }
         return true;
     }
-    private static<T extends IAuthentification> Pair<User, Boolean> createAccount(T server,
+    private <T extends IAuthentification> Pair<User, Boolean> createAccount(T server,
                                                                                   Constants.ClientType clientType) {
         int answer;
         Console console = System.console();
@@ -85,7 +87,7 @@ public abstract class Client {
             throw new RuntimeException(exception);
         }
     }
-    private static<T extends IAuthentification> User login(T server, Constants.ClientType clientType) {
+    private <T extends IAuthentification> User login(T server, Constants.ClientType clientType) {
         final Console console = System.console();
         System.out.print("username: ");
         String username = Normalization.normalizeUsername(scanner.nextLine());
@@ -121,7 +123,7 @@ public abstract class Client {
         }
         return user;
     }
-    private static<T extends IAuthentification> void logout(T server, User user) {
+    private <T extends IAuthentification> void logout(T server, User user) {
         try {
             server.logout(createSealedRequest(user));
         } catch (RemoteException exception) {
@@ -129,13 +131,13 @@ public abstract class Client {
             throw new RuntimeException(exception);
         }
     }
-    protected static SealedObject createSealedRequest(User user) {
+    protected SealedObject createSealedRequest(User user) {
         return encryptionService.encryptObject(new ClientRequest(Constants.generateRandomInt(), user),
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.CLIENT_REQUEST_SECRET_KEY_ALIAS, Constants.CLIENT_REQUEST_SECRET_KEY_PATH);
     }
     @SuppressWarnings("unchecked")
-    protected static<T extends IAuthentification> Pair<T, User> connectToServer(Constants.ClientType clientType) {
+    protected <T extends IAuthentification> Pair<T, User> connectToServer(Constants.ClientType clientType) {
         final User user;
         final T server;
         try {

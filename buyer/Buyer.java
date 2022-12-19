@@ -5,15 +5,18 @@ import java.security.NoSuchAlgorithmException;
 import java.util.*;
 
 public final class Buyer extends Client {
+    private IBuyer server;
+    private User user;
     public Buyer() {
         super();
     }
-    public static void main(String[] args) {
+    @Override
+    protected void init() {
         var response = connectToServer(Constants.ClientType.Buyer);
         if(response == null)
             return;
-        final IBuyer server = (IBuyer) response.x();
-        final User user = response.y();
+        server = (IBuyer) response.x();
+        user = response.y();
         int answer;
         do {
             System.out.println("""
@@ -31,16 +34,16 @@ public final class Buyer extends Client {
             answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
             switch (answer) {
-                case 1 -> getAuctionItem(server, user);
-                case 2 -> bidItem(server, user);
-                case 3 -> printList(server, user);
-                case 4 -> getInfoOnAuction(server, user);
+                case 1 -> getAuctionItem();
+                case 2 -> bidItem();
+                case 3 -> printList();
+                case 4 -> getInfoOnAuction();
             }
         } while(answer != 5);
         scanner.close();
         System.exit(0);
     }
-    private static void getAuctionItem(IBuyer server, User user) {
+    private void getAuctionItem() {
         try {
             System.out.print("Please enter an id: ");
             int auctionId = Validation.validateInteger(scanner.nextLine());
@@ -63,7 +66,7 @@ public final class Buyer extends Client {
             exception.printStackTrace();
         }
     }
-    private static void bidItem(IBuyer server, User user) {
+    private void bidItem() {
         System.out.print("Please enter the auction id: ");
         int auctionId = Validation.validateInteger(scanner.nextLine());
         if(auctionId == -1) return;
@@ -94,7 +97,7 @@ public final class Buyer extends Client {
             throw new RuntimeException(exception);
         }
     }
-    private static void printList(IBuyer server, User user) {
+    private void printList() {
         try {
             var sealedObject = server.getList(createSealedRequest(user));
             var listKey = encryptionService.decryptSecretKey(Constants.PASSWORD,
@@ -112,7 +115,7 @@ public final class Buyer extends Client {
             throw new RuntimeException(exception);
         }
     }
-    private static void getInfoOnAuction(IBuyer server, User user) {
+    private void getInfoOnAuction() {
         try {
             System.out.print("Please enter the auction id: ");
             int auctionId = Validation.validateInteger(scanner.nextLine());
@@ -136,5 +139,8 @@ public final class Buyer extends Client {
             System.out.println("ERROR:\t problem while trying to get info on an auction");
             throw new RuntimeException(exception);
         }
+    }
+    public static void main(String[] args) {
+        new Buyer();
     }
 }

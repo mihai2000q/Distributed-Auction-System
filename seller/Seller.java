@@ -5,15 +5,18 @@ import java.security.NoSuchAlgorithmException;
 import java.util.List;
 
 public final class Seller extends Client {
+    private ISeller server;
+    private User user;
     public Seller() {
         super();
     }
-    public static void main(String[] args) {
+    @Override
+    protected void init() {
         var response = connectToServer(Constants.ClientType.Seller);
         if(response == null)
             return;
-        final ISeller server = (ISeller) response.x();
-        final User user = response.y();
+        server = (ISeller) response.x();
+        user = response.y();
         int answer;
         do {
             System.out.println("""
@@ -30,15 +33,18 @@ public final class Seller extends Client {
             answer = Validation.validateInteger(scanner.nextLine());
             System.out.println();
             switch (answer) {
-                case 1 -> createAuction(server, user);
-                case 2 -> closeAuction(server, user);
-                case 3 -> getBids(server, user);
+                case 1 -> createAuction();
+                case 2 -> closeAuction();
+                case 3 -> getBids();
             }
         } while(answer != 4);
         scanner.close();
         System.exit(0);
     }
-    private static void createAuction(ISeller server, User user) {
+    public static void main(String[] args) {
+        new Seller();
+    }
+    private void createAuction() {
         String itemName;
         int startingPrice;
         int reservePrice;
@@ -73,7 +79,7 @@ public final class Seller extends Client {
             throw new RuntimeException(exception);
         }
     }
-    private static void closeAuction(ISeller server, User user) {
+    private void closeAuction() {
         System.out.print("Please enter the auction id: ");
         int auctionId = Validation.validateInteger(scanner.nextLine());
         if(auctionId == -1) return;
@@ -97,7 +103,7 @@ public final class Seller extends Client {
         }
     }
     @SuppressWarnings("unchecked")
-    private static void getBids(ISeller server, User user) {
+    private void getBids() {
         System.out.print("Please enter the auction id: ");
         int auctionId = Validation.validateInteger(scanner.nextLine());
         if(auctionId == -1) return;
