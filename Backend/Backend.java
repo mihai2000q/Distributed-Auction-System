@@ -1,5 +1,8 @@
+import org.jgroups.Address;
 import org.jgroups.JChannel;
+import org.jgroups.ReceiverAdapter;
 import org.jgroups.blocks.RpcDispatcher;
+import org.jgroups.util.Util;
 
 import javax.crypto.*;
 import java.io.*;
@@ -8,23 +11,55 @@ import java.nio.file.Path;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.util.*;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.stream.Collectors;
 
-public final class Backend {
-    private final Map<String, Integer> numbers;
-    private final Map<Integer, AuctionItem> auctionItems;
-    private final Map<Integer, List<Bid>> bids;
-    private final List<User> users;
-    private final Collection<User> activeUsers;
+public final class Backend extends ReceiverAdapter {
+    private Map<String, Integer> numbers;
+    private Map<Integer, AuctionItem> auctionItems;
+    private Map<Integer, List<Bid>> bids;
+    private List<User> users;
+    private Collection<User> activeUsers;
     private final IEncryptionService encryptionService;
     private final IGroupUtils groupUtils;
     private final JChannel channel;
     private final RpcDispatcher dispatcher;
-    private int requestCount;
+    private boolean flag = true;
+    private ServerData serverData;
+    private final Lock lock;
     public Backend() {
         super();
-        numbers = new HashMap<>();
+        lock = new ReentrantLock();
         encryptionService = new EncryptionService();
+        groupUtils = new GroupUtils();
+        channel = groupUtils.connect(this);
+        if(channel == null)
+            System.exit(1);
+        //loadData(null);
+        //if oldest is frontend
+        if(flag) {
+            if (channel.getView().size() <= 2)
+                //if there's only one backend and a frontend running
+                init();
+            else
+                loadData(channel.getView().get(1));
+        }
+
+        dispatcher = new RpcDispatcher(channel, this);
+        dispatcher.setMessageListener(this);
+    }
+    private void loadData(Address target) {
+        try {
+            channel.getState(target, Constants.DISPATCHER_TIMEOUT);
+            init(serverData);
+        } catch (Exception exception) {
+            System.err.println("ERROR:\t couldn't get state from backend");
+            throw new RuntimeException(exception);
+        }
+    }
+    private void init() {
+        numbers = new HashMap<>();
         auctionItems = new HashMap<>(Constants.Backend.LIST_CAPACITY);
         bids = new HashMap<>();
         users = new ArrayList<>(Constants.Backend.USERS_CAPACITY);
@@ -32,14 +67,16 @@ public final class Backend {
         loadMapFile(Constants.Backend.AUCTION_LIST_PATH, auctionItems);
         loadMapFile(Constants.Backend.BIDS_PATH, bids);
         loadListFile(Constants.Backend.USERS_PATH, users);
-
-        this.requestCount = 0;
-        groupUtils = new GroupUtils();
-        channel = groupUtils.connect();
-        if(channel == null)
-            System.exit(1);
-
-        dispatcher = new RpcDispatcher(channel, this);
+    }
+    private void init(ServerData serverData) {
+        if(serverData == null) //shouldn't be null
+            throw new RuntimeException("Server Data is null");
+        numbers = serverData.numbers();
+        auctionItems = serverData.auctionItems();
+        bids = serverData.bids();
+        users = serverData.users();
+        activeUsers = serverData.activeUsers();
+        //potentially save the files
     }
     public static void main(String[] args) {
         //launching the server
@@ -460,5 +497,18 @@ public final class Backend {
     }
     private String getWinnerForItem(int auctionId){
         return auctionItems.get(auctionId).getHighestBidName();
+    }
+    @Override
+    public void getState(OutputStream output) throws Exception {
+        synchronized (auctionItems) {
+            Util.objectToStream(new ServerData(numbers, auctionItems, bids, users, activeUsers),
+                    new DataOutputStream(output));
+        }
+    }
+    @Override
+    public void setState(InputStream inputStream) throws Exception {
+        synchronized (lock) {
+            serverData = (ServerData) Util.readObject(new DataInputStream(inputStream));
+        }
     }
 }

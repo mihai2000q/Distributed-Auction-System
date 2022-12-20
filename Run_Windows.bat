@@ -1,7 +1,7 @@
 cd out
 start java -cp jgroups-3.6.20.Final.jar;.  -Djava.net.preferIPv4Stack=true Frontend.java
 echo Running Frontend Server...
-timeout /t 1
+timeout /t 3
 FOR /L %%G IN (1,1,1) DO start java -cp jgroups-3.6.20.Final.jar;. -Djava.net.preferIPv4Stack=true Backend.java
 echo Running Backend Server(s)...
 timeout /t 5

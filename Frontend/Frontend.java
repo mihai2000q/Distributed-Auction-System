@@ -1,4 +1,6 @@
 import org.jgroups.JChannel;
+import org.jgroups.Receiver;
+import org.jgroups.ReceiverAdapter;
 import org.jgroups.blocks.RequestOptions;
 import org.jgroups.blocks.ResponseMode;
 import org.jgroups.blocks.RpcDispatcher;
@@ -6,6 +8,7 @@ import org.jgroups.util.RspList;
 
 import javax.crypto.*;
 import java.io.IOException;
+import java.io.OutputStream;
 import java.rmi.RemoteException;
 import java.rmi.registry.LocateRegistry;
 import java.rmi.registry.Registry;
@@ -21,16 +24,17 @@ public final class Frontend extends UnicastRemoteObject implements IBuyer, ISell
     private final RpcDispatcher dispatcher;
     public Frontend() throws RemoteException {
         super();
+        Receiver receiver = new ReceiverAdapter();
         encryptionService = new EncryptionService();
         groupUtils = new GroupUtils();
-        channel = groupUtils.connect();
+        channel = groupUtils.connect(receiver);
         if (this.channel == null)
             System.exit(1); // error to be printed by the 'connect' function
         this.bind();
 
         dispatcher = new RpcDispatcher(channel, this);
         dispatcher.setMembershipListener(new MembershipListener());
-
+        dispatcher.setMessageListener(receiver);
     }
     public static void main(String[] args) {
         //launching the server

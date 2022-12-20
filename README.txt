@@ -1,3 +1,7 @@
+UPDATE: Backend Server can't be replicated as the .getState() method from JChannel doesn't work as indicated.
+I tried to work around it with the .setState() method from the ReceiverAdapter class, but it didn't work either.
+Therefore, only one replica can be launched
+
 Execute the "Compile.sh" file
 (it will create a folder with all the compiled files)
 
