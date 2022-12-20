@@ -3,6 +3,15 @@ import java.util.Locale;
 import java.util.Random;
 
 public final class Constants {
+    public static class Backend {
+        public static final String SERVER_CHALLENGE_NUMBER = "ServerChallengeNumber";
+        public static final String CLIENT_CHALLENGE_NUMBER = "ClientChallengeNumber";
+        public static final String BIDS_PATH = "Data/bids.tmp";
+        public static final String USERS_PATH = "Data/users.tmp";
+        public static final String AUCTION_LIST_PATH = "Data/Auction-list.tmp";
+        public static final int LIST_CAPACITY = 1000;
+        public static final int USERS_CAPACITY = 100;
+    }
     private Constants() {}
     public enum ClientType {Seller, Buyer}
     public static final int REGISTRY_PORT = 1099;
@@ -23,11 +32,6 @@ public final class Constants {
     public static final String AUTHENTICATION_KEY_ALIAS = "AuthenticationSecretKey";
     public static final String USER_SECRET_KEY_PATH = "../.sharedKeys/UserSecretKey.ks";
     public static final String USER_SECRET_KEY_ALIAS = "UserSecretKey";
-    public static final String AUCTION_LIST_PATH = "Data/Auction-list.tmp";
-    public static final String BIDS_PATH = "Data/bids.tmp";
-    public static final String USERS_PATH = "Data/users.tmp";
-    public static final int LIST_CAPACITY = 1000;
-    public static final int USERS_CAPACITY = 100;
     public static final NumberFormat FORMATTER = NumberFormat.getCurrencyInstance();
     public static final int DISPATCHER_TIMEOUT = 1000;
     public static int generateRandomInt(){

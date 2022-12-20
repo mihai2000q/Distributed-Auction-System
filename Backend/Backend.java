@@ -11,8 +11,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public final class Backend {
-    private int serverChallengeNumber;
-    private int clientChallengeNumber;
+    private final Map<String, Integer> numbers;
     private final Map<Integer, AuctionItem> auctionItems;
     private final Map<Integer, List<Bid>> bids;
     private final List<User> users;
@@ -24,14 +23,15 @@ public final class Backend {
     private int requestCount;
     public Backend() {
         super();
+        numbers = new HashMap<>();
         encryptionService = new EncryptionService();
-        auctionItems = new HashMap<>(Constants.LIST_CAPACITY);
+        auctionItems = new HashMap<>(Constants.Backend.LIST_CAPACITY);
         bids = new HashMap<>();
-        users = new ArrayList<>(Constants.USERS_CAPACITY);
+        users = new ArrayList<>(Constants.Backend.USERS_CAPACITY);
         activeUsers = new ArrayList<>();
-        loadMapFile(Constants.AUCTION_LIST_PATH, auctionItems);
-        loadMapFile(Constants.BIDS_PATH, bids);
-        loadListFile(Constants.USERS_PATH, users);
+        loadMapFile(Constants.Backend.AUCTION_LIST_PATH, auctionItems);
+        loadMapFile(Constants.Backend.BIDS_PATH, bids);
+        loadListFile(Constants.Backend.USERS_PATH, users);
 
         this.requestCount = 0;
         groupUtils = new GroupUtils();
@@ -49,7 +49,8 @@ public final class Backend {
     
     public int requestServerChallenge(SealedObject clientRequest) {
         readClientRequest(clientRequest);
-        serverChallengeNumber = Constants.generateRandomInt();
+        int serverChallengeNumber = Constants.generateRandomInt();
+        numbers.put(Constants.Backend.SERVER_CHALLENGE_NUMBER, serverChallengeNumber);
         System.out.println("Server sent authentication challenge for client");
         return serverChallengeNumber;
     }
@@ -60,7 +61,7 @@ public final class Backend {
             int number = (int) challenge.getObject(
                     (encryptionService.decryptSecretKey(Constants.PASSWORD,
                     Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH)));
-            if(number == serverChallengeNumber) {
+            if(number == numbers.get(Constants.Backend.SERVER_CHALLENGE_NUMBER)) {
                 System.out.println("Server authenticated the client");
                 return true;
             }
@@ -76,7 +77,7 @@ public final class Backend {
 
     public boolean sendClientChallenge(int clientChallenge, SealedObject clientRequest) {
         readClientRequest(clientRequest);
-        clientChallengeNumber = clientChallenge;
+        numbers.put(Constants.Backend.CLIENT_CHALLENGE_NUMBER, clientChallenge);
         System.out.println("Server received the client challenge");
         return true;
     }
@@ -84,7 +85,7 @@ public final class Backend {
     public SealedObject requestEncryptedClientChallenge(SealedObject clientRequest) {
         readClientRequest(clientRequest);
         System.out.println("Server got authenticated by client");
-        return encryptionService.encryptObject(clientChallengeNumber,
+        return encryptionService.encryptObject(numbers.get(Constants.Backend.CLIENT_CHALLENGE_NUMBER),
                 Constants.ENCRYPTION_ALGORITHM, Constants.PASSWORD,
                 Constants.AUTHENTICATION_KEY_ALIAS, Constants.AUTHENTICATION_SECRET_KEY_PATH);
     }
@@ -156,7 +157,7 @@ public final class Backend {
                     Constants.USER_SECRET_KEY_ALIAS, Constants.USER_SECRET_KEY_PATH);
         }
         users.add(theUser);
-        saveFile(Constants.USERS_PATH, users);
+        saveFile(Constants.Backend.USERS_PATH, users);
         System.out.println("Successfully created another account with the username " + theUser.getUsername());
         activeUsers.add(theUser);
         System.out.println("\nNumber of active users is " + activeUsers.size());
@@ -231,7 +232,7 @@ public final class Backend {
                     " made its first bid on \"" + item.getItemName() + "\"");
             bids.get(auctionId).add(new Bid(Constants.generateRandomInt(), item.getItemName(),
                                             user.getUsername(), bidRequest.bid()));
-            saveFile(Constants.BIDS_PATH, bids);
+            saveFile(Constants.Backend.BIDS_PATH, bids);
         }
         else {
             if(bidRequest.bid() <= result.getBid()) {
@@ -245,7 +246,7 @@ public final class Backend {
             bids.get(auctionId).remove(result);
             bids.get(auctionId).add(new Bid(result.getId(), result.getItemName(),
                     result.getUsername(), bidRequest.bid()));
-            saveFile(Constants.BIDS_PATH, bids);
+            saveFile(Constants.Backend.BIDS_PATH, bids);
         }
 
         if(bidRequest.bid() >= item.getCurrentBid())
@@ -313,11 +314,11 @@ public final class Backend {
             return new Pair<>(false, -1);
         }
         auctionItems.put(auctionId,item);
-        saveFile(Constants.AUCTION_LIST_PATH, auctionItems);
+        saveFile(Constants.Backend.AUCTION_LIST_PATH, auctionItems);
         System.out.println(Constants.SERVER_NAME + " received item with id: " + item.getId() + "\n");
         System.out.println(user.getUsername() + " created auction with the id: " + auctionId);
         bids.put(auctionId, new ArrayList<>());
-        saveFile(Constants.BIDS_PATH, bids);
+        saveFile(Constants.Backend.BIDS_PATH, bids);
         return new Pair<>(true, auctionId);
     }
 
@@ -366,7 +367,7 @@ public final class Backend {
         var item = auctionItems.remove(auctionId);
         item.setOngoing(false);
         auctionItems.put(auctionId, item);
-        saveFile(Constants.AUCTION_LIST_PATH, auctionItems);
+        saveFile(Constants.Backend.AUCTION_LIST_PATH, auctionItems);
         System.out.println(Constants.SERVER_NAME +
                 " closed the auction with id: " + auctionId);
         User user = users.stream().filter(x -> Objects.equals(x.getUsername(), item.getHighestBidName()))

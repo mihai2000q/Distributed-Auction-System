@@ -34,6 +34,7 @@ public final class Frontend extends UnicastRemoteObject implements IBuyer, ISell
     }
     public static void main(String[] args) {
         //launching the server
+        System.out.println("Frontend Server running...");
         try {
             new Frontend();
         } catch (RemoteException exception) {
@@ -51,7 +52,6 @@ public final class Frontend extends UnicastRemoteObject implements IBuyer, ISell
             throw new RuntimeException(exception);
         }
     }
-
     @Override
     public int requestServerChallenge(SealedObject clientRequest) throws RemoteException {
         return readRspResponses(clientRequest, "requestServerChallenge",
