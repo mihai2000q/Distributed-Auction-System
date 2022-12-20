@@ -14,6 +14,7 @@ public abstract class Client {
     protected final Scanner scanner = new Scanner(System.in);
     public Client() {
         super();
+        System.out.println(getClass().getName() + " Client running...\n");
         init();
     }
     protected abstract void init();

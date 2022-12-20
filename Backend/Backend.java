@@ -43,6 +43,7 @@ public final class Backend {
     }
     public static void main(String[] args) {
         //launching the server
+        System.out.println("Backend Server running...");
         new Backend();
     }
     

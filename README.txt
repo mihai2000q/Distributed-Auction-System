@@ -1,8 +1,9 @@
 Execute the "Compile.sh" file
 (it will create a folder with all the compiled files)
 
-then execute Run.bat
-It will open the frontend server, 3 backend replicas and 1 seller + 1 buyer
+then execute Run_Windows.bat or Run_Linux.sh (which may not work properly as it was tested on Windows)
+It will open the frontend server, 1 backend replica and 1 seller + 1 buyer
+(for more replicas use below command or replace in script in side the for the end number)
 
 If you want to open more
 go to the newly created folder "out"
